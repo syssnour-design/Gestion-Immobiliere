@@ -176,7 +176,7 @@
 </head>
 <body>
 <div id="app"></div>
-<script id="state-data" type="application/json">{"proprietaires":[],"cours":[],"nextIds":{"proprietaire":1,"cour":1,"maison":1,"paiement":1,"reparation":1,"locataire":1}}</script>
+<script id="state-data" type="application/json">{"proprietaires":[],"cours":[],"nextIds":{"proprietaire":1,"cour":1,"maison":1,"paiement":1,"depense":1,"locataire":1}}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ===================== GABARIT DE PAGE (pour republication) ===================== */
@@ -205,9 +205,13 @@ var state;
 })();
 if (!state.cours) state.cours = [];
 if (!state.nextIds) state.nextIds = {};
-['proprietaire', 'cour', 'maison', 'paiement', 'reparation', 'locataire'].forEach(function (k) {
+['proprietaire', 'cour', 'maison', 'paiement', 'depense', 'locataire'].forEach(function (k) {
   if (!state.nextIds[k]) state.nextIds[k] = 1;
 });
+if (state.nextIds.reparation && state.nextIds.reparation > state.nextIds.depense) {
+  state.nextIds.depense = state.nextIds.reparation;
+}
+delete state.nextIds.reparation;
 /* Migration : ancien modèle à propriétaire unique -> tableau de propriétaires */
 if (!state.proprietaires) {
   var legacyNom = (state.proprietaire && state.proprietaire.nom) || 'Propriétaire principal';
@@ -219,16 +223,31 @@ if (!state.proprietaires) {
 delete state.proprietaire;
 state.cours.forEach(function (c) {
   if (!c.proprietaireId && state.proprietaires.length) c.proprietaireId = state.proprietaires[0].id;
-  if (!c.reparationsGenerales) c.reparationsGenerales = [];
+  if (!c.depensesGenerales) {
+    c.depensesGenerales = (c.reparationsGenerales || []).map(function (r) {
+      var o = {}; for (var k in r) o[k] = r[k];
+      if (!o.type) o.type = 'Réparation';
+      return o;
+    });
+  }
+  delete c.reparationsGenerales;
   (c.maisons || []).forEach(function (m) {
     if (!m.locataireId) m.locataireId = uid('locataire');
+    if (!m.depenses) {
+      m.depenses = (m.reparations || []).map(function (r) {
+        var o = {}; for (var k in r) o[k] = r[k];
+        if (!o.type) o.type = 'Réparation';
+        return o;
+      });
+    }
+    delete m.reparations;
   });
 });
 
 var _now = new Date();
 var ui = { tab: 'dashboard', openCours: {}, openMaisons: {}, addingCour: false,
-  addingMaisonTo: null, editingCour: null, editingMaison: null,
-  addingPaiementTo: null, addingReparationTo: null, printing: null, savedFlag: '',
+  addingMaisonTo: null, editingCour: null, editingMaison: null, duplicatePrefill: null,
+  addingPaiementTo: null, addingDepenseTo: null, printing: null, savedFlag: '',
   filterProprietaire: 'all', addingProprietaire: false, editingProprietaire: null,
   periodType: 'mois', periodYear: _now.getFullYear(), periodMonth: _now.getMonth() + 1,
   periodQuarter: Math.ceil((_now.getMonth() + 1) / 3), periodSemester: (_now.getMonth() + 1) <= 6 ? 1 : 2 };
@@ -252,7 +271,7 @@ var claudeDownloads = null;
 function uid(kind) {
   var n = state.nextIds[kind] || 1;
   state.nextIds[kind] = n + 1;
-  var prefix = { proprietaire: 'PR', cour: 'CR', maison: 'M', paiement: 'PM', reparation: 'RP', locataire: 'LOC' }[kind];
+  var prefix = { proprietaire: 'PR', cour: 'CR', maison: 'M', paiement: 'PM', depense: 'DP', locataire: 'LOC' }[kind];
   return prefix + '-' + String(n).padStart(3, '0');
 }
 function fmtMoney(n) {
@@ -459,7 +478,7 @@ function submitAddCour() {
   var proprietaireId = val('f-cour-proprietaire');
   if (!proprietaireId) { alert('Sélectionnez un propriétaire.'); return; }
   var c = { id: uid('cour'), proprietaireId: proprietaireId, nom: nom, localisation: val('f-cour-loc'), description: val('f-cour-desc'),
-    maisons: [], reparationsGenerales: [] };
+    maisons: [], depensesGenerales: [] };
   state.cours.push(c);
   ui.addingCour = false;
   ui.openCours[c.id] = true;
@@ -487,8 +506,21 @@ function deleteCour(id) {
 }
 
 /* ===================== ACTIONS : MAISONS ===================== */
-function showAddMaison(courId) { ui.addingMaisonTo = courId; render(); }
-function cancelAddMaison() { ui.addingMaisonTo = null; render(); }
+function showAddMaison(courId) { ui.addingMaisonTo = courId; ui.duplicatePrefill = null; render(); }
+function cancelAddMaison() { ui.addingMaisonTo = null; ui.duplicatePrefill = null; render(); }
+function duplicateMaison(id) {
+  var found = findMaison(id);
+  if (!found) return;
+  var m = found.maison;
+  ui.duplicatePrefill = {
+    type: m.type, pieces: m.pieces, superficie: m.superficie,
+    equipements: m.equipements, adresse: m.adresse, loyer: m.loyer
+  };
+  ui.addingMaisonTo = found.cour.id;
+  ui.openCours[found.cour.id] = true;
+  persistUi();
+  render();
+}
 function submitAddMaison(courId) {
   var c = findCour(courId);
   if (!c) return;
@@ -499,10 +531,11 @@ function submitAddMaison(courId) {
     superficie: numVal('f-maison-superficie'), equipements: val('f-maison-equip'),
     adresse: val('f-maison-adresse'), loyer: numVal('f-maison-loyer'),
     locataireNom: val('f-maison-locataire'), locataireTel: val('f-maison-tel'),
-    dateEntree: val('f-maison-date'), paiements: [], reparations: []
+    dateEntree: val('f-maison-date'), paiements: [], depenses: []
   };
   c.maisons.push(m);
   ui.addingMaisonTo = null;
+  ui.duplicatePrefill = null;
   ui.openMaisons[m.id] = true;
   save();
 }
@@ -562,38 +595,39 @@ function deletePaiement(maisonId, payId) {
   save();
 }
 
-/* ===================== ACTIONS : RÉPARATIONS ===================== */
-function showAddReparation(scope, ownerId) { ui.addingReparationTo = { scope: scope, id: ownerId }; render(); }
-function cancelAddReparation() { ui.addingReparationTo = null; render(); }
-function submitAddReparation(scope, ownerId) {
-  var desc = val('f-rep-desc');
-  if (!desc) { alert('La description des travaux est obligatoire.'); return; }
+/* ===================== ACTIONS : DÉPENSES (réparations, impôt foncier, taxes, assurance...) ===================== */
+var DEPENSE_TYPES = ['Réparation', 'Impôt foncier', 'Assurance', 'Taxe communale', 'Autre'];
+function showAddDepense(scope, ownerId) { ui.addingDepenseTo = { scope: scope, id: ownerId }; render(); }
+function cancelAddDepense() { ui.addingDepenseTo = null; render(); }
+function submitAddDepense(scope, ownerId) {
+  var desc = val('f-dep-desc');
+  if (!desc) { alert('La description de la dépense est obligatoire.'); return; }
   var r = {
-    id: uid('reparation'), date: val('f-rep-date') || todayISO(), description: desc,
-    montant: numVal('f-rep-montant'), prestataire: val('f-rep-prestataire'), statut: val('f-rep-statut') || 'À prévoir'
+    id: uid('depense'), type: val('f-dep-type') || 'Autre', date: val('f-dep-date') || todayISO(), description: desc,
+    montant: numVal('f-dep-montant'), prestataire: val('f-dep-prestataire'), statut: val('f-dep-statut') || 'À prévoir'
   };
   if (scope === 'generale') {
     var c = findCour(ownerId);
     if (!c) return;
-    c.reparationsGenerales.push(r);
+    c.depensesGenerales.push(r);
   } else {
     var found = findMaison(ownerId);
     if (!found) return;
-    found.maison.reparations.push(r);
+    found.maison.depenses.push(r);
   }
-  ui.addingReparationTo = null;
+  ui.addingDepenseTo = null;
   save();
 }
-function deleteReparation(scope, ownerId, repId) {
-  if (!confirm('Supprimer cette réparation ?')) return;
+function deleteDepense(scope, ownerId, depId) {
+  if (!confirm('Supprimer cette dépense ?')) return;
   if (scope === 'generale') {
     var c = findCour(ownerId);
     if (!c) return;
-    c.reparationsGenerales = c.reparationsGenerales.filter(function (x) { return x.id !== repId; });
+    c.depensesGenerales = c.depensesGenerales.filter(function (x) { return x.id !== depId; });
   } else {
     var found = findMaison(ownerId);
     if (!found) return;
-    found.maison.reparations = found.maison.reparations.filter(function (x) { return x.id !== repId; });
+    found.maison.depenses = found.maison.depenses.filter(function (x) { return x.id !== depId; });
   }
   save();
 }
@@ -704,12 +738,12 @@ function quickFillQuittance() {
 /* ===================== EXPORT EXCEL ===================== */
 async function exportExcel() {
   if (typeof XLSX === 'undefined') { alert("La bibliothèque d'export n'a pas pu se charger. Vérifiez la connexion."); return; }
-  var maisonsRows = [], paiementsRows = [], reparationsRows = [];
+  var maisonsRows = [], paiementsRows = [], depensesRows = [];
   state.cours.forEach(function (c) {
     var ownerName = (findProprietaire(c.proprietaireId) || {}).nom || '';
-    c.reparationsGenerales.forEach(function (r) {
-      reparationsRows.push({
-        'Propriétaire': ownerName, 'Cour': c.nom, 'Maison': 'Générale', 'Date': r.date, 'Description': r.description,
+    c.depensesGenerales.forEach(function (r) {
+      depensesRows.push({
+        'Propriétaire': ownerName, 'Cour': c.nom, 'Maison': 'Générale', 'Type': r.type || '', 'Date': r.date, 'Description': r.description,
         'Montant (FCFA)': r.montant, 'Prestataire': r.prestataire, 'Statut': r.statut
       });
     });
@@ -729,9 +763,9 @@ async function exportExcel() {
           'N° Quittance': p.numeroQuittance || '', 'Observations': p.note
         });
       });
-      m.reparations.forEach(function (r) {
-        reparationsRows.push({
-          'Propriétaire': ownerName, 'Cour': c.nom, 'Maison': m.nom, 'Date': r.date, 'Description': r.description,
+      m.depenses.forEach(function (r) {
+        depensesRows.push({
+          'Propriétaire': ownerName, 'Cour': c.nom, 'Maison': m.nom, 'Type': r.type || '', 'Date': r.date, 'Description': r.description,
           'Montant (FCFA)': r.montant, 'Prestataire': r.prestataire, 'Statut': r.statut
         });
       });
@@ -745,7 +779,7 @@ async function exportExcel() {
   }
   addSheet(maisonsRows, 'Maisons', ['Propriétaire','ID','ID Locataire','Cour','Maison','Type','Pièces','Superficie (m²)','Équipements','Localisation','Loyer mensuel (FCFA)','Locataire','Téléphone',"Date d'entrée"]);
   addSheet(paiementsRows, 'Loyers', ['Propriétaire','Cour','Maison','Locataire','Mois concerné',"Date d'échéance",'Date de paiement','Montant dû (FCFA)','Montant payé (FCFA)','Mode de paiement','Statut','N° Quittance','Observations']);
-  addSheet(reparationsRows, 'Réparations', ['Propriétaire','Cour','Maison','Date','Description','Montant (FCFA)','Prestataire','Statut']);
+  addSheet(depensesRows, 'Dépenses', ['Propriétaire','Cour','Maison','Type','Date','Description','Montant (FCFA)','Prestataire','Statut']);
 
   var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   var blob = new Blob([wbout], { type: 'application/octet-stream' });
@@ -768,14 +802,19 @@ function setTab(t) { ui.tab = t; persistUi(); render(); }
 function computeTotals() {
   var range = periodRange();
   var cours = scopedCours();
-  var t = { nbCours: cours.length, nbMaisons: 0, du: 0, paye: 0, impaye: 0, reparations: 0, periodLabel: periodLabel() };
+  var t = { nbCours: cours.length, nbMaisons: 0, du: 0, paye: 0, impaye: 0, depenses: 0, depensesParType: {}, periodLabel: periodLabel() };
+  function addDepense(r) {
+    if (!(r.date >= range.start + '-01' && r.date <= range.end + '-31')) return;
+    var montant = Number(r.montant) || 0;
+    t.depenses += montant;
+    var type = r.type || 'Autre';
+    t.depensesParType[type] = (t.depensesParType[type] || 0) + montant;
+  }
   cours.forEach(function (c) {
-    t.reparations += (c.reparationsGenerales || []).filter(function (r) { return r.date >= range.start + '-01' && r.date <= range.end + '-31'; })
-      .reduce(function (s, r) { return s + (Number(r.montant) || 0); }, 0);
+    (c.depensesGenerales || []).forEach(addDepense);
     c.maisons.forEach(function (m) {
       t.nbMaisons++;
-      t.reparations += (m.reparations || []).filter(function (r) { return r.date >= range.start + '-01' && r.date <= range.end + '-31'; })
-        .reduce(function (s, r) { return s + (Number(r.montant) || 0); }, 0);
+      (m.depenses || []).forEach(addDepense);
       (m.paiements || []).forEach(function (p) {
         if (p.periode >= range.start && p.periode <= range.end) {
           t.du += Number(p.montantDu) || 0;
@@ -930,8 +969,16 @@ function renderDashboard() {
     kpi(fmtMoney(t.du), 'Loyers attendus') +
     kpi(fmtMoney(t.paye), 'Loyers perçus') +
     kpi(fmtMoney(t.impaye), 'Impayés sur la période', t.impaye > 0) +
-    kpi(fmtMoney(t.reparations), 'Réparations sur la période') +
-    '</div></div>';
+    kpi(fmtMoney(t.depenses), 'Dépenses sur la période') +
+    '</div>';
+  var typeKeys = Object.keys(t.depensesParType || {});
+  if (typeKeys.length) {
+    html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
+      typeKeys.sort(function (a, b) { return t.depensesParType[b] - t.depensesParType[a]; }).map(function (type) {
+        return '<span class="badge" style="background:var(--brass-bg);color:var(--brass-strong);">' + esc(type) + ' : ' + fmtMoney(t.depensesParType[type]) + '</span>';
+      }).join('') + '</div>';
+  }
+  html += '</div>';
 
   var cours = scopedCours();
   if (!cours.length) {
@@ -939,12 +986,12 @@ function renderDashboard() {
   } else {
     var range = periodRange();
     html += '<div class="section"><div class="section-head"><h2>Situation par cour</h2></div><div class="table-wrap"><table>' +
-      '<tr><th>Cour</th><th>Localisation</th><th class="num">Maisons</th><th class="num">Loyers perçus</th><th class="num">Impayés</th><th class="num">Réparations</th></tr>';
+      '<tr><th>Cour</th><th>Localisation</th><th class="num">Maisons</th><th class="num">Loyers perçus</th><th class="num">Impayés</th><th class="num">Dépenses</th></tr>';
     cours.forEach(function (c) {
-      var cd = 0, cp = 0, crep = (c.reparationsGenerales || []).filter(function (r) { return r.date >= range.start + '-01' && r.date <= range.end + '-31'; })
+      var cd = 0, cp = 0, crep = (c.depensesGenerales || []).filter(function (r) { return r.date >= range.start + '-01' && r.date <= range.end + '-31'; })
         .reduce(function (s, r) { return s + (Number(r.montant) || 0); }, 0);
       c.maisons.forEach(function (m) {
-        crep += (m.reparations || []).filter(function (r) { return r.date >= range.start + '-01' && r.date <= range.end + '-31'; })
+        crep += (m.depenses || []).filter(function (r) { return r.date >= range.start + '-01' && r.date <= range.end + '-31'; })
           .reduce(function (s, r) { return s + (Number(r.montant) || 0); }, 0);
         (m.paiements || []).forEach(function (p) {
           if (p.periode >= range.start && p.periode <= range.end) { cd += Number(p.montantDu) || 0; cp += Number(p.montantPaye) || 0; }
@@ -1047,24 +1094,28 @@ function renderCour(c) {
   }
   c.maisons.forEach(function (m) { body += renderMaison(c, m); });
 
-  body += renderReparationsBlock('generale', c.id, c.reparationsGenerales || [], 'Réparations générales de la cour');
+  body += renderDepensesBlock('generale', c.id, c.depensesGenerales || [], 'Dépenses générales de la cour');
   body += '</div>';
   return '<div class="cour-card">' + head + body + '</div>';
 }
 
 function renderAddMaisonForm(courId) {
-  return '<div class="form-box"><h4 style="margin-bottom:10px;">Nouvelle maison</h4><div class="grid3">' +
-    field('Nom / N&deg; maison *', 'text', 'f-maison-nom', '', 'Ex : Villa A') +
-    selectField('Type', 'f-maison-type', ['Villa', 'Appartement', 'Studio', 'Chambre', 'Local commercial']) +
-    field('Nombre de pièces', 'number', 'f-maison-pieces', '') +
-    field('Superficie (m²)', 'number', 'f-maison-superficie', '') +
-    field('Loyer mensuel (FCFA)', 'number', 'f-maison-loyer', '') +
+  var pre = ui.duplicatePrefill || {};
+  var isDup = !!ui.duplicatePrefill;
+  return '<div class="form-box"><h4 style="margin-bottom:10px;">Nouvelle maison' + (isDup ? ' (dupliquée)' : '') + '</h4>' +
+    (isDup ? '<p style="color:var(--ink-soft);font-size:12.5px;margin:-4px 0 12px;">Caractéristiques reprises de la maison dupliquée &mdash; pensez à changer le nom et à renseigner le nouveau locataire.</p>' : '') +
+    '<div class="grid3">' +
+    field('Nom / N&deg; maison *', 'text', 'f-maison-nom', '', 'Ex : Villa B') +
+    selectField('Type', 'f-maison-type', ['Villa', 'Appartement', 'Studio', 'Chambre', 'Local commercial'], pre.type) +
+    field('Nombre de pièces', 'number', 'f-maison-pieces', pre.pieces != null ? pre.pieces : '') +
+    field('Superficie (m²)', 'number', 'f-maison-superficie', pre.superficie != null ? pre.superficie : '') +
+    field('Loyer mensuel (FCFA)', 'number', 'f-maison-loyer', pre.loyer != null ? pre.loyer : '') +
     field("Date d'entrée du locataire", 'date', 'f-maison-date', '') +
     '</div>' +
-    field('Localisation / adresse précise', 'text', 'f-maison-adresse', '', 'Ex : Angré 8e Tranche, non loin de la pharmacie') +
+    field('Localisation / adresse précise', 'text', 'f-maison-adresse', pre.adresse || '', 'Ex : Angré 8e Tranche, non loin de la pharmacie') +
     '<div class="grid3">' + field('Locataire actuel', 'text', 'f-maison-locataire', '') + field('Téléphone locataire', 'text', 'f-maison-tel', '') +
     field('ID Locataire', 'text', 'f-maison-locid', '', 'Laisser vide pour génération automatique') + '</div>' +
-    fieldTextarea('Équipements / caractéristiques', 'f-maison-equip', '', 'Ex : Douche, cuisine équipée, parking, groupe électrogène') +
+    fieldTextarea('Équipements / caractéristiques', 'f-maison-equip', pre.equipements || '', 'Ex : Douche, cuisine équipée, parking, groupe électrogène') +
     '<div class="form-actions"><button class="btn btn-primary" onclick="submitAddMaison(\'' + courId + '\')">Enregistrer</button>' +
     '<button class="btn btn-ghost" onclick="cancelAddMaison()">Annuler</button></div></div>';
 }
@@ -1096,12 +1147,13 @@ function renderMaison(c, m) {
       '</div>' +
       '<div class="cour-actions" style="margin:12px 0;">' +
       '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();showEditMaison(\'' + m.id + '\')">Modifier</button>' +
+      '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();duplicateMaison(\'' + m.id + '\')">Dupliquer</button>' +
       '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteMaison(\'' + m.id + '\')">Supprimer</button>' +
       '</div>';
   }
 
   body += renderPaiementsBlock(m);
-  body += renderReparationsBlock('maison', m.id, m.reparations || [], 'Réparations de la maison');
+  body += renderDepensesBlock('maison', m.id, m.depenses || [], 'Dépenses de la maison');
   body += '</div>';
   return '<div class="maison-card">' + head + body + '</div>';
 }
@@ -1166,35 +1218,36 @@ function renderPaiementsBlock(m) {
   return html;
 }
 
-/* ---- réparations (générale ou par maison) ---- */
-function renderReparationsBlock(scope, ownerId, list, title) {
-  var isAdding = ui.addingReparationTo && ui.addingReparationTo.scope === scope && ui.addingReparationTo.id === ownerId;
+/* ---- dépenses : réparations, impôt foncier, taxes, assurance... (générale ou par maison) ---- */
+function renderDepensesBlock(scope, ownerId, list, title) {
+  var isAdding = ui.addingDepenseTo && ui.addingDepenseTo.scope === scope && ui.addingDepenseTo.id === ownerId;
   var html = '<div class="subblock"><div class="subblock-head"><h4>' + title + '</h4>' +
-    (isAdding ? '' : '<button class="btn btn-sm" onclick="showAddReparation(\'' + scope + '\',\'' + ownerId + '\')">+ Ajouter une réparation</button>') + '</div>';
+    (isAdding ? '' : '<button class="btn btn-sm" onclick="showAddDepense(\'' + scope + '\',\'' + ownerId + '\')">+ Ajouter une dépense</button>') + '</div>';
 
   if (isAdding) {
     html += '<div class="form-box"><div class="grid3">' +
-      field('Date', 'date', 'f-rep-date', todayISO()) +
-      field('Montant (FCFA)', 'number', 'f-rep-montant', '') +
-      selectField('Statut', 'f-rep-statut', ['À prévoir', 'En cours', 'Terminée']) +
+      selectField('Type de dépense *', 'f-dep-type', DEPENSE_TYPES, 'Réparation') +
+      field('Date', 'date', 'f-dep-date', todayISO()) +
+      field('Montant (FCFA)', 'number', 'f-dep-montant', '') +
       '</div>' +
-      fieldTextarea('Description des travaux *', 'f-rep-desc', '', 'Ex : Réfection de la toiture') +
-      field('Prestataire', 'text', 'f-rep-prestataire', '') +
-      '<div class="form-actions"><button class="btn btn-primary" onclick="submitAddReparation(\'' + scope + '\',\'' + ownerId + '\')">Enregistrer</button>' +
-      '<button class="btn btn-ghost" onclick="cancelAddReparation()">Annuler</button></div></div>';
+      fieldTextarea('Description *', 'f-dep-desc', '', 'Ex : Impôt foncier 2026, Réfection de la toiture, Prime assurance habitation') +
+      '<div class="grid2">' + selectField('Statut', 'f-dep-statut', ['À prévoir', 'En cours', 'Terminée', 'Payée']) +
+      field('Prestataire / Bénéficiaire', 'text', 'f-dep-prestataire', '', 'Ex : Direction Générale des Impôts') + '</div>' +
+      '<div class="form-actions"><button class="btn btn-primary" onclick="submitAddDepense(\'' + scope + '\',\'' + ownerId + '\')">Enregistrer</button>' +
+      '<button class="btn btn-ghost" onclick="cancelAddDepense()">Annuler</button></div></div>';
   }
 
   if (!list.length) {
-    html += '<div class="empty-hint">Aucune réparation enregistrée.</div></div>';
+    html += '<div class="empty-hint">Aucune dépense enregistrée.</div></div>';
     return html;
   }
   var sorted = list.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
-  html += '<div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th class="num">Montant</th><th>Prestataire</th><th>Statut</th><th></th></tr>';
+  html += '<div class="table-wrap"><table><tr><th>Date</th><th>Type</th><th>Description</th><th class="num">Montant</th><th>Prestataire</th><th>Statut</th><th></th></tr>';
   sorted.forEach(function (r) {
-    var badgeClass = r.statut === 'Terminée' ? 'badge-green' : (r.statut === 'En cours' ? 'badge-amber' : 'badge-red');
-    html += '<tr><td>' + esc(r.date || '—') + '</td><td>' + esc(r.description) + '</td><td class="num">' + fmtMoney(r.montant) + '</td>' +
+    var badgeClass = (r.statut === 'Terminée' || r.statut === 'Payée') ? 'badge-green' : (r.statut === 'En cours' ? 'badge-amber' : 'badge-red');
+    html += '<tr><td>' + esc(r.date || '—') + '</td><td>' + esc(r.type || 'Autre') + '</td><td>' + esc(r.description) + '</td><td class="num">' + fmtMoney(r.montant) + '</td>' +
       '<td>' + esc(r.prestataire || '—') + '</td><td><span class="badge ' + badgeClass + '">' + esc(r.statut) + '</span></td>' +
-      '<td class="row-actions"><button class="btn btn-sm btn-danger" onclick="deleteReparation(\'' + scope + '\',\'' + ownerId + '\',\'' + r.id + '\')">&times;</button></td></tr>';
+      '<td class="row-actions"><button class="btn btn-sm btn-danger" onclick="deleteDepense(\'' + scope + '\',\'' + ownerId + '\',\'' + r.id + '\')">&times;</button></td></tr>';
   });
   html += '</table></div></div>';
   return html;
