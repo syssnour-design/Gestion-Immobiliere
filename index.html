@@ -1,0 +1,1326 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registre Immobilier</title>
+<link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjogIlJlZ2lzdHJlIEltbW9iaWxpZXIiLCAic2hvcnRfbmFtZSI6ICJSZWdpc3RyZSBJbW1vIiwgImRlc2NyaXB0aW9uIjogIlN1aXZpIGRlcyBjb3VycywgbWFpc29ucywgbG95ZXJzLCByXHUwMGU5cGFyYXRpb25zIGV0IHF1aXR0YW5jZXMiLCAic3RhcnRfdXJsIjogIi4iLCAic2NvcGUiOiAiLiIsICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLCAib3JpZW50YXRpb24iOiAicG9ydHJhaXQtcHJpbWFyeSIsICJiYWNrZ3JvdW5kX2NvbG9yIjogIiNGMkVFREYiLCAidGhlbWVfY29sb3IiOiAiIzhDNkEyMiIsICJpY29ucyI6IFt7InNyYyI6ICJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQU1BQUFBREFDQVlBQUFCUzNHd0hBQUFFWWtsRVFWUjRuTzNkUFZMY1dCaUZZVFUxSzJFcnM1Y0ppQWtuZEVoTU1IdVpyYkFWSExoc1kxQjM2K2RLVi9yTzh5d0FWTTE1ZGRWdENsK0dnM2w1ZW56dmZRMXM1L24xN2RMN0dqN3FlakhHVHU4Z2R2L21SczgxUFdMWTdSc2FQblBzRmNQbTM4VHdXV1ByRURiNzRvWlBTMXVGMFB5TEdqNWJhaDNDUThzdlp2eHNyZlhHbXRSaytQVFE0alJZZlFJWVA3MjAyTjZxQUl5ZjN0WnVjSEVBeHM5UnJObmlvZ0NNbjZOWnVzblpBUmcvUjdWa203TUNNSDZPYnU1R0p3ZGcvSnpGbksxT0NzRDRPWnVwbTcwYmdQRnpWbE8yMi9SWEllQnNiZ2JnN3MvWjNkdncxUUNNbnlwdWJka2pFTkZHQTNEM3A1cHJtM1lDRU8xTEFPNytWRFcyYlNjQTBmNEl3TjJmNmo1djNBbEF0RjhCdVB1VDR1UFduUUJFRXdEUkhvYkI0dzk1Zm03ZUNVQTBBUkJOQUVRVEFORXUzZ0NUekFsQU5BRVFUUUJFRXdEUkJFQTBBWFQyejdmL2UxOUNOQitEZGpJMi9QLysvYnZEbFdRVHdJN20zTzNGc0E4QjdHRE5ZNDRRdGlXQWpiUit0aGZDTmdUUTJCNXZhc1hRamdBYTZmRnBqaERXRThBS1Iva0lVd2pMQ1dDQm93eC9qQmptRWNBTVJ4NytaMEtZUmdCM25HbjBZNFJ3bXdDdU9Qdnd4NGpoS3dGOFVISDBZNFR3bXdDR25PRi9Kb1R3QUZLSFB5WTFocmdBalA2MnRCQmlBakQ4ZVZKQ0tCK0E0YTlYT1lhU0FSajlOaXFHVUNvQXc5OUhwUkJPSDREUjkzWDJHRTRiZ09FZnkxbERPRzBBVXdsbHZiT09lNHF5QVJoK2V4VkRLUGwzZ1l4L0d4VmYxNUlCd0ZUbEFxaDRsenFTYXE5dnVRQmdEZ0VRVFFCRUV3RFJCRUEwQVJCTkFFUVRBTkVFUURRQkVFMEFSQk1BMFFSQU5BRVFUUUJFRXdEUkJFQTBBUkJOQUVRVEFORUVRRFFCRUUwQVJCTUEwUVJBTkFFUVRRQkVFd0RSQkVBMEFSRHRyOTRYVU0zVy80dEt0VDlQM3BzVGdHZ0NJSm9BaUNZQW9nbUFhQUlnbWdDSUpnQ2lDWUJvQWlDYUFJZ21BS0lKZ0dnQ0lKb0FpQ1lBb2dtQWFBSWdtZ0NJSmdDaUNZQm9BaUNhQUlnbUFLSUpnR2dDSUpvQWlDWUFvZ21BYUFJZ21nQ0lWaTZBcmY4K2Y3cHFyMis1QU5oT3RmRVBROUVBS3Y2Z2VxdjZtcFlNWUJoKy9NQ3EvdEQyVnZsMXZMdzhQYjczdmdqb3Bld0pBRk1JZ0dnQ0lKb0FpQ1lBb2dtQWFBSWdtZ0NJSmdDaUNZQm9BaUNhQUlnbUFLSUpnR2dDSUpvQWlDWUFvZ21BYUFJZ21nQ0k5Zno2ZG5sNGZuMjc5TDRRNk1VSlFEUUJFRTBBUkhzWWhoOXZCbnBmQ096cDUrYWRBRVFUQU5GK0JlQXhpQlFmdCs0RUlKb0FpUFpIQUI2RHFPN3p4cDBBUlBzU2dGT0Fxc2EyN1FRZzJtZ0FUZ0dxdWJacEp3RFJyZ2JnRktDS1cxdStlUUtJZ0xPN3QyR1BRSlExNVFaK053Q25BSlZOT2dGRXdObE0zZXprUnlBUmNCWnp0anJyUFlBSU9McTVHNTM5SmxnRUhOV1NiUzc2RkVnRUhNM1NUUzcrR0ZRRUhNV2FMYTc2ZHdBUjBOdmFEVFlaOE12VDQzdUxyd05UdGJyNU5yMkRDNEU5dEh6eWFQcXJFQjZKMkZycmpXMDJXS2NCTFcxMWM5MzhqaTBFMXRqNnFXSzNSeFloTU1kZWo5TzdQN01MZ1d0NnZJZnMrcVpWRFBUKzRPUnduOXFJb3E3ZVl4L3pIZWV4V0xQWWtUMWdBQUFBQUVsRlRrU3VRbUNDIiwgInNpemVzIjogIjE5MngxOTIiLCAidHlwZSI6ICJpbWFnZS9wbmciLCAicHVycG9zZSI6ICJhbnkifSwgeyJzcmMiOiAiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFnQUFBQUlBQ0FZQUFBRDBlTlQ2QUFBT0VrbEVRVlI0bk8zZFBYYlVTQnVHWVpreksyRXI3SVdBbUpDUWtKaUF2YkFWdHNJWDhQV01iZHEyZmtxcXQrcTVyaFdvTmFmOTNDbzFaeDRXU3ZyMjZmM3YzdGNBY05Ubjc3OGVlbDhEOS9rUDA1R1JCOUlKaEg3YytBc1llb0QxUk1FMTNPUVRHSHlBZGdUQk9kelVSb3crd0RVRVFSdHU0azRHSDZBL01iQ2ZHN2VCMFFlb1N3eHM0MmF0WVBnQnhpSUczdVlHdmNEb0E4eEJETnpucGp4aitBSG1KQVNlY2pQK3ovQURaQkFDZjBUZkJLTVBrQ3M5QkNJL3ZPRUg0Q1kxQk9JK3RQRUg0SjYwRUlqNXNJWWZnRFZTUW1ENkQybjRBZGhqOWhDWTlzTVpmZ0NPbWprQ3B2eGd4aCtBbG1ZTWdhaytrT0VINEV3emhjQzczaGZRaXZFSDRHd3piYzN3SlRQVGZ3d0F4akg2YWNEUUp3REdINEJlUnQrZ1lRTmc5QnNQd1BoRzNxTGhqaTlHdnRrQXpHdTBWd0pEblFBWWZ3Q3FHbTJqaGdtQTBXNHNBSGxHMnFyeXh4VWozVXdBV0pZeFhnZVV2a0RqRDhESUtvZEEyVmNBeGgrQTBWWGVzcElCVVBtR0FjQVdWVGV0WEFCVXZWRUFzRmZGYlNzVkFCVnZFQUMwVUczanlnUkF0UnNEQUsxVjJyb1NBVkRwaGdEQW1hcHNYdmNBcUhJakFPQXFGYmF2YXdCVXVBRUEwRVB2RGV3V0FMMC9PQUQwMW5NTHV3U0E4UWVBUDNwdDR1VUJZUHdCNEtrZTIzaHBBQmgvQUxqdjZvMjhMQUNNUHdEVTBmMmZBUUlBZjF6NXNIeEpBSGo2QjRCMXJ0ck0wd1BBK0FQQU5sZHM1NmtCWVB3QllKK3pOOVJ2QUFBZzBHa0I0T2tmQUk0NWMwdFBDUURqRHdCdG5MV3B6UVBBK0FOQVcyZHNxOThBQUVDZ3BnSGc2UjhBenRGNlk1c0ZnUEVIZ0hPMTNGcXZBQUFnVUpNQThQUVBBTmRvdGJtSEE4RDRBOEMxV215dlZ3QUFFT2hRQUhqNkI0QStqbTZ3RXdBQUNMUTdBRHo5QTBCZlI3YllDUUFBQk5vVkFKNytBYUNHdlp1OE9RQ01Qd0NNenlzQUFCamNub2Z6VFFIZzZSOEE1dUFFQUFBbXNQVWhYUUFBUUtEVkFlRDRId0JxMjdMVlRnQUFJTkNxQVBEMER3QmpXTHZaVGdBQUlOQ2JBZURwSHdER3NtYTduUUFBUUNBQkFBQ0JYZzBBeC84QU1LYTNOdHdKQUFBRWVqRUFQUDBEd05oZTIzSW5BQUFRU0FBQVFLQzdBZUQ0SHdEbThOS21Pd0VBZ0VBQ0FBQUNDUUFBQ1BSWEFIai9Ed0J6dWJmdFRnQUFJSkFBQUlCQVR3TEE4VDhBek9uNXhqc0JBSUJBQWdBQUFna0FBQWowYndCNC93OEFjM3U4OVU0QUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlOQzdaZkV2QUFBZ3hXM3puUUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRWUvQk5BQU1qakJBQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFnR0Fmdi83c2ZRbEFKLzVuUUJEbzN2RC8rUEtodzVVQXZRZ0FDTEhsYVY4TXdQd0VBRXp1eURHL0VJQjVDUUNZVU90MyswSUE1aU1BWUNKWC9LaFBETUFjQkFCTW9NZXYrWVVBakUwQXdLQXEvUk0rTVFEakVRQXdtRXJELzV3UWdIRUlBQmhBNWRHL1J3aEFmUUlBQ2h0dCtPOFJBMUNUQUlDQ1poais1NFFBMUNJQW9JZ1pSLzhlSVFBMUNBRG9MR1g0N3hFRDBJOEFnRTZTaC84NUlRRFhFd0J3SWFQL05qRUExeEFBY0FIRHY1MFFnSE1KQURpSjBXOURDTUE1QkFBMFp2alBJd2FnSFFFQWpSais2d2dCT0U0QXdBRkd2eThoQVBzSkFOakI4TmNqQm1BYkFRQXJHZjB4Q0FGWVJ3REFHd3ovdU1RQXZFd0F3QXNNL3p5RUFQeE5BTUFqUm45dVFnRCtJd0JnTWZ5SnhBRHBCQUN4akQ3TElnVElKUUNJWS9pNVJ3aVFSZ0FRdy9DemxoZ2dnUUJnYWthZkk0UUFNeE1BVE1udzA1b1lZRFlDZ0drWWZhNGdCSmlGQUdCNGhwOGVoQUNqRXdBTXkvQlRoUmhnUkFLQW9SaDlLaE1DakVRQU1BVER6MGlFQUNNUUFKUmw5Sm1CR0tBcUFVQTVocDhaQ1FHcUVRQ1VZZmhKSVFhb1FBRFFsZEVubVJDZ0p3RkFGNFlmL2lNRTZFRUFjQ25ERDY4VEExeEZBSEE2b3cvYkNRSE9KZ0E0amVHSDQ0UUFaeEVBTkdYMDRUeGlnSllFQUUwWWZyaU9FS0FGQWNBaGhoLzZFZ1BzSlFEWXpPaERQVUtBclFRQXF4bCtxRThJc0pZQTRGVkdIOFlsQm5pTkFPQXV3dy96RUFMY0l3QjR3dkREdklRQWp3a0FqRDRFRWdNSWdHQ0dIeEFDdVFSQUdLTVB2RVFNWkJFQUlRdy9zSllReUNBQWFFWmt3RFVNTkMwSUFBNHovTkNIRU9DSWQ3MHZnTEVaZitqSDk0OGpCQUM3K2VNRC9ma2VzcGNBWUJkL2RLQU8zMGYyRUFCczVvOE4xT043eVZZQ2dFMzhrWUc2ZkQvWlFnQUFRQ0FCd0dxZUxxQSszMVBXRWdBQUVFZ0FBRUFnQWNBcWpoVmhITDZ2ckNFQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUlKQUFBSUpBQUFJQkFBZ0FBQWdrQUFBZ2tBQUFna0FBQWdFQUNBQUFDQ1FBQUNDUUFBQ0NRQUFDQVFBSUFBQUlKQUFBSUpBQUFJSkFBQUlCQUFnQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUlKQUFBSUpBQUFJQkFBZ0FBQWdrQUFBZ2tBQUFna0FBQWdFQUNBQUFDQ1FBQUNDUUFBQ0NRQUFDQVFBSUFBQUlKQUFBSUpBQUFJSkFBQUlCQUFnQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZzBEKzlMd0RTL2ZqeW9mY2xkUEh4NjgvZWx3RFJuQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQUFRQ0FCQUFDQkJBQUFCQklBQUJCSUFBQkFJQUVBQUlFRUFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQUFRQ0FCQUFDQkJBQUFCQklBQUJCSUFBQkFJQUVBQUlFRUFBQUVFZ0FBRUVnQUFFQWdBUUFBZ1FRQUFBUVNBQUFRU0FBQVFDQUJBQUNCQkFBQUJCSUFBQkJJQUFCQUlBRUFBSUVFQUFBRUVnQUFFRWdBQUVBZ0FRQUFnUVFBQUFRU0FBQVFTQUFBUUNBQkFBQ0JCQUFBQkJJQUFCQklBQUJBSUFFQUFJRUVBQUFFRWdBQUVFZ0FBRUFnQVFBQWdRUUFxL3o0OHFIM0pRQXIrYjZ5aGdBQWdFQUNBQUFDQ1FCV2M2d0k5Zm1lc3BZQUFKaUU4V2NMQWNBbS9zQUF6RUVBc0prSWdIcDhMOWxLQUxDTFB6WlFoKzhqZXdnQWR2TkhCL3J6UFdRdkFjQWgvdmhBSHorK2ZQRDk0eEFCd0dIK0VNRzFmTjlvNFovZUY4QThIdjlSK3ZqMVo4Y3JnZmtZZlZwNytQYnAvZS9lRndFQVhNc3JBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUlKQUFBSUpBQUFJQkFBZ0FBQWdrQUFBZ2tBQUFna0FBQWdFQUNBQUFDQ1FBQUNDUUFBQ0NRQUFDQVFBSUFBQUlKQUFBSUpBQUFJSkFBQUlCQUFnQUFBZ2tBQUFna0FBQWdrQUFBZ0VBQ0FBQUNDUUFBQ0NRQUFDQ1FBQUNBUUFJQUFBSUpBQUFJSkFBQUlKQUFBSUJBQWdBQUFna0FBQWdrQUFBZ2tBQUFnRUFDQUFBQ0NRQUFDQ1FBQUNDUUFBQ0FRQUlBQUFJSkFBQUk5Tzd6OTE4UHZTOENBTGpPNSsrL0hwd0FBRUFnQVFBQWdRUUFBQVFTQUFBUVNBQUFRQ0FCQUFDQkJBQUFCSHEzTEgvK1BXRHZDd0VBem5mYmZDY0FBQkJJQUFCQUlBRUFBSUVFQUFBRStqY0EvQkFRQU9iMmVPdWRBQUJBSUFFQUFJRUVBQUFFZWhJQWZnY0FBSE42dnZGT0FBQWdrQUFBZ0VBQ0FBQUMvUlVBZmdjQUFITzV0KzFPQUFBZ2tBQUFnRUIzQThCckFBQ1l3MHViN2dRQUFBSUpBQUFJOUdJQWVBMEFBR043YmN1ZEFBQkFJQUVBQUlGZURRQ3ZBUUJnVEc5dHVCTUFBQWdrQUFCZ01tdE84TjhNQUs4QkFHQStUZ0FBSU5DcUFIQUtBQUJqV0x2WlRnQUFJTkRxQUhBS0FBQzFiZGxxSndBQUVHaFRBRGdGQUlDYXRtNjBFd0FBQ0xRNUFKd0NBRUF0ZTdiWkNRQUFCTm9WQUU0QkFLQ0d2WnZzQkFBQUF1ME9BS2NBQU5EWGtTMTJBZ0FBZ1E0RmdGTUFBT2pqNkFZZlBnRVFBUUJ3clJiYjZ4VUFBQVJxRWdCT0FRRGdHcTAyMXdrQUFBeWk1UU4zc3dCd0NnQUE0Mmg2QWlBQ0FPQWNyVGZXS3dBQUtPNk1CK3ptQWVBVUFBRHFPK1VFUUFRQVFCdG5iZXBwcndCRUFBQWNjK2FXK2cwQUFCUjA5b1AwcVFIZ0ZBQUFhanI5QkVBRUFNQTJWMnpuSmE4QVJBQUFySFBWWmw3Mkd3QVJBQUN2dTNJci9RZ1FBQXE0K2tINTBnQndDZ0FBTlZ4K0FpQUNBT0NwSHR2WTVSV0FDQUNBUDNwdFlyZmZBSWdBQU5MMTNNS3VQd0lVQVFDazZyMkIzZjhWUU84YkFBQlhxN0I5M1FOZ1dXcmNDQUM0UXBYTkt4RUF5MUxuaGdEQVdTcHRYWmtBV0paYU53WUFXcXEyY2FVQ1lGbnEzU0FBT0tyaXRwVUxnR1dwZWFNQVlJK3FtMWJ5b202K2ZYci91L2MxQU1BZVZZZi9wdlRGM1FnQkFFWlNmZnlYcGVncmdPZEd1SkVBc0N6amJOWVFBYkFzNDl4UUFIS050RlhEWE9pTjF3RUFWRFBTOE44TWQ4RTNRZ0NBQ2tZYy8yVVo2QlhBYzZQZWNBRG1NZklXRFh2aE4wNENBTGpheU1OL00vd0h1QkVDQUZ4aGh2RmZsb2tDWUZsRUFBRG5tV1g0YjZiNk1EZENBSUNXWmh2L1paazBBSlpGQkFCdzNJekRmelB0QjdzUkFnRHNNZlA0TDB0QUFOd0lBUURXbUgzNGJ5SSs1R05DQUlCN1VvYi9KdXJEUGlZRUFGaVd2T0cvaWZ6UWp3a0JnRXlwdzM4VC9lRWZFd0lBR2RLSC84Wk5lRVlJQU16SjhEL2xacnhBQ0FDTXoraS96STFaUVF3QWpNWHd2ODBOMmtBSUFOUmw5TGR4czNZU0F3RDlHZjM5M0xoR0JBSEFOWXgrRzI3aUNjUUFRRHNHL3h4dTZnVUVBY0I2QnY4YWJuSkh3Z0JJWit6N2NlT0xFZ2ZBREF4OFhmOER2dGgzNnRObm5hb0FBQUFBU1VWT1JLNUNZSUk9IiwgInNpemVzIjogIjUxMng1MTIiLCAidHlwZSI6ICJpbWFnZS9wbmciLCAicHVycG9zZSI6ICJhbnkifSwgeyJzcmMiOiAiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFNQUFBQURBQ0FZQUFBQlMzR3dIQUFBRVlrbEVRVlI0bk8zZFBWTGNXQmlGWVRVMUsyRXJzNWNKaUFrbmRFaE1NSHVacmJBVkhMaHNZMUIzNitkS1Yvck84eXdBVk0xNWRkVnRDbCtHZzNsNWVuenZmUTFzNS9uMTdkTDdHajdxZWpIR1R1OGdkdi9tUnM4MVBXTFk3UnNhUG5Qc0ZjUG0zOFR3V1dQckVEYjc0b1pQUzF1RjBQeUxHajViYWgzQ1E4c3ZadnhzcmZYR210UmsrUFRRNGpSWWZRSVlQNzIwMk42cUFJeWYzdFp1Y0hFQXhzOVJyTm5pb2dDTW42Tlp1c25aQVJnL1I3VmttN01DTUg2T2J1NUdKd2RnL0p6Rm5LMU9Dc0Q0T1p1cG03MGJnUEZ6VmxPMjIvUlhJZUJzYmdiZzdzL1ozZHZ3MVFDTW55cHViZGtqRU5GR0EzRDNwNXBybTNZQ0VPMUxBTzcrVkRXMmJTY0EwZjRJd04yZjZqNXYzQWxBdEY4QnVQdVQ0dVBXblFCRUV3RFJIb2JCNHc5NWZtN2VDVUEwQVJCTkFFUVRBTkV1M2dDVHpBbEFOQUVRVFFCRUV3RFJCRUEwQVhUMno3Zi9lMTlDTkIrRGRqSTIvUC8rL2J2RGxXUVR3STdtM08zRnNBOEI3R0ROWTQ0UXRpV0FqYlIrdGhmQ05nVFEyQjV2YXNYUWpnQWE2ZkZwamhEV0U4QUtSL2tJVXdqTENXQ0Jvd3gvakJqbUVjQU1SeDcrWjBLWVJnQjNuR24wWTRSd213Q3VPUHZ3eDRqaEt3RjhVSEgwWTRUd213Q0duT0YvSm9Ud0FGS0hQeVkxaHJnQWpQNjJ0QkJpQWpEOGVWSkNLQitBNGE5WE9ZYVNBUmo5TmlxR1VDb0F3OTlIcFJCT0g0RFI5M1gyR0U0YmdPRWZ5MWxET0cwQVV3bGx2Yk9PZTRxeUFSaCtleFZES1BsM2dZeC9HeFZmMTVJQndGVGxBcWg0bHpxU2FxOXZ1UUJnRGdFUVRRQkVFd0RSQkVBMEFSQk5BRVFUQU5FRVFEUUJFRTBBUkJNQTBRUkFOQUVRVFFCRUV3RFJCRUEwQVJCTkFFUVRBTkVFUURRQkVFMEFSQk1BMFFSQU5BRVFUUUJFRXdEUkJFQTBBUkR0cjk0WFVNM1cvNHRLdFQ5UDNwc1RnR2dDSUpvQWlDWUFvZ21BYUFJZ21nQ0lKZ0NpQ1lCb0FpQ2FBSWdtQUtJSmdHZ0NJSm9BaUNZQW9nbUFhQUlnbWdDSUpnQ2lDWUJvQWlDYUFJZ21BS0lKZ0dnQ0lKb0FpQ1lBb2dtQWFBSWdtZ0NJVmk2QXJmOCtmN3BxcjIrNUFOaE90ZkVQUTlFQUt2NmdlcXY2bXBZTVlCaCsvTUNxL3REMlZ2bDF2THc4UGI3M3Znam9wZXdKQUZNSWdHZ0NJSm9BaUNZQW9nbUFhQUlnbWdDSUpnQ2lDWUJvQWlDYUFJZ21BS0lKZ0dnQ0lKb0FpQ1lBb2dtQWFBSWdtZ0NJOWZ6NmRubDRmbjI3OUw0UTZNVUpRRFFCRUUwQVJIc1loaDl2Qm5wZkNPenA1K2FkQUVRVEFORitCZUF4aUJRZnQrNEVJSm9BaVBaSEFCNkRxTzd6eHAwQVJQc1NnRk9BcXNhMjdRUWcybWdBVGdHcXViWnBKd0RScmdiZ0ZLQ0tXMXUrZVFLSWdMTzd0MkdQUUpRMTVRWitOd0NuQUpWTk9nRkV3TmxNM2V6a1J5QVJjQlp6dGpyclBZQUlPTHE1RzUzOUpsZ0VITldTYlM3NkZFZ0VITTNTVFM3K0dGUUVITVdhTGE3NmR3QVIwTnZhRFRZWjhNdlQ0M3VMcndOVHRicjVOcjJEQzRFOXRIenlhUHFyRUI2SjJGcnJqVzAyV0tjQkxXMTFjOTM4amkwRTF0ajZxV0szUnhZaE1NZGVqOU83UDdNTGdXdDZ2SWZzK3FaVkRQVCs0T1J3bjlxSW9xN2VZeC96SGVleFdMUFlrVDFnQUFBQUFFbEZUa1N1UW1DQyIsICJzaXplcyI6ICIxOTJ4MTkyIiwgInR5cGUiOiAiaW1hZ2UvcG5nIiwgInB1cnBvc2UiOiAibWFza2FibGUifV19">
+<meta name="theme-color" content="#8C6A22">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Registre Immo">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAEYklEQVR4nO3dPVLcWBiFYTU1K2Ers5cJiAkndEhMMHuZrbAVHLhsY1B36+dKV/rO8ywAVM15ddVtCl+Gg3l5enzvfQ1s5/n17dL7Gj7qejHGTu8gdv/mRs81PWLY7RsaPnPsFcPm38TwWWPrEDb74oZPS1uF0PyLGj5bah3CQ8svZvxsrfXGmtRk+PTQ4jRYfQIYP7202N6qAIyf3tZucHEAxs9RrNniogCMn6NZusnZARg/R7Vkm7MCMH6Obu5GJwdg/JzFnK1OCsD4OZupm70bgPFzVlO22/RXIeBsbgbg7s/Z3dvw1QCMnypubdkjENFGA3D3p5prm3YCEO1LAO7+VDW2bScA0f4IwN2f6j5v3AlAtF8BuPuT4uPWnQBEEwDRHobB4w95fm7eCUA0ARBNAEQTANEu3gCTzAlANAEQTQBEEwDRBEA0AXT2z7f/e19CNB+DdjI2/P/+/bvDlWQTwI7m3O3FsA8B7GDNY44QtiWAjbR+thfCNgTQ2B5vasXQjgAa6fFpjhDWE8AKR/kIUwjLCWCBowx/jBjmEcAMRx7+Z0KYRgB3nGn0Y4RwmwCuOPvwx4jhKwF8UHH0Y4TwmwCGnOF/JoTwAFKHPyY1hrgAjP62tBBiAjD8eVJCKB+A4a9XOYaSARj9NiqGUCoAw99HpRBOH4DR93X2GE4bgOEfy1lDOG0AUwllvbOOe4qyARh+exVDKPl3gYx/GxVf15IBwFTlAqh4lzqSaq9vuQBgDgEQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARDtr94XUM3W/4tKtT9P3psTgGgCIJoAiCYAogmAaAIgmgCIJgCiCYBoAiCaAIgmAKIJgGgCIJoAiCYAogmAaAIgmgCIJgCiCYBoAiCaAIgmAKIJgGgCIJoAiCYAogmAaAIgmgCIVi6Arf8+f7pqr2+5ANhOtfEPQ9EAKv6geqv6mpYMYBh+/MCq/tD2Vvl1vLw8Pb73vgjopewJAFMIgGgCIJoAiCYAogmAaAIgmgCIJgCiCYBoAiCaAIgmAKIJgGgCIJoAiCYAogmAaAIgmgCI9fz6dnl4fn279L4Q6MUJQDQBEE0ARHsYhh9vBnpfCOzp5+adAEQTANF+BeAxiBQft+4EIJoAiPZHAB6DqO7zxp0ARPsSgFOAqsa27QQg2mgATgGqubZpJwDRrgbgFKCKW1u+eQKIgLO7t2GPQJQ15QZ+NwCnAJVNOgFEwNlM3ezkRyARcBZztjrrPYAIOLq5G539JlgEHNWSbS76FEgEHM3STS7+GFQEHMWaLa76dwAR0NvaDTYZ8MvT43uLrwNTtbr5Nr2DC4E9tHzyaPqrEB6J2FrrjW02WKcBLW11c938ji0E1tj6qWK3RxYhMMdej9O7P7MLgWt6vIfs+qZVDPT+4ORwn9qIoq7eYx/zHeexWLPYkT1gAAAAAElFTkSuQmCC">
+<link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAEYklEQVR4nO3dPVLcWBiFYTU1K2Ers5cJiAkndEhMMHuZrbAVHLhsY1B36+dKV/rO8ywAVM15ddVtCl+Gg3l5enzvfQ1s5/n17dL7Gj7qejHGTu8gdv/mRs81PWLY7RsaPnPsFcPm38TwWWPrEDb74oZPS1uF0PyLGj5bah3CQ8svZvxsrfXGmtRk+PTQ4jRYfQIYP7202N6qAIyf3tZucHEAxs9RrNniogCMn6NZusnZARg/R7Vkm7MCMH6Obu5GJwdg/JzFnK1OCsD4OZupm70bgPFzVlO22/RXIeBsbgbg7s/Z3dvw1QCMnypubdkjENFGA3D3p5prm3YCEO1LAO7+VDW2bScA0f4IwN2f6j5v3AlAtF8BuPuT4uPWnQBEEwDRHobB4w95fm7eCUA0ARBNAEQTANEu3gCTzAlANAEQTQBEEwDRBEA0AXT2z7f/e19CNB+DdjI2/P/+/bvDlWQTwI7m3O3FsA8B7GDNY44QtiWAjbR+thfCNgTQ2B5vasXQjgAa6fFpjhDWE8AKR/kIUwjLCWCBowx/jBjmEcAMRx7+Z0KYRgB3nGn0Y4RwmwCuOPvwx4jhKwF8UHH0Y4TwmwCGnOF/JoTwAFKHPyY1hrgAjP62tBBiAjD8eVJCKB+A4a9XOYaSARj9NiqGUCoAw99HpRBOH4DR93X2GE4bgOEfy1lDOG0AUwllvbOOe4qyARh+exVDKPl3gYx/GxVf15IBwFTlAqh4lzqSaq9vuQBgDgEQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARDtr94XUM3W/4tKtT9P3psTgGgCIJoAiCYAogmAaAIgmgCIJgCiCYBoAiCaAIgmAKIJgGgCIJoAiCYAogmAaAIgmgCIJgCiCYBoAiCaAIgmAKIJgGgCIJoAiCYAogmAaAIgmgCIVi6Arf8+f7pqr2+5ANhOtfEPQ9EAKv6geqv6mpYMYBh+/MCq/tD2Vvl1vLw8Pb73vgjopewJAFMIgGgCIJoAiCYAogmAaAIgmgCIJgCiCYBoAiCaAIgmAKIJgGgCIJoAiCYAogmAaAIgmgCI9fz6dnl4fn279L4Q6MUJQDQBEE0ARHsYhh9vBnpfCOzp5+adAEQTANF+BeAxiBQft+4EIJoAiPZHAB6DqO7zxp0ARPsSgFOAqsa27QQg2mgATgGqubZpJwDRrgbgFKCKW1u+eQKIgLO7t2GPQJQ15QZ+NwCnAJVNOgFEwNlM3ezkRyARcBZztjrrPYAIOLq5G539JlgEHNWSbS76FEgEHM3STS7+GFQEHMWaLa76dwAR0NvaDTYZ8MvT43uLrwNTtbr5Nr2DC4E9tHzyaPqrEB6J2FrrjW02WKcBLW11c938ji0E1tj6qWK3RxYhMMdej9O7P7MLgWt6vIfs+qZVDPT+4ORwn9qIoq7eYx/zHeexWLPYkT1gAAAAAElFTkSuQmCC">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F2EEDF; --paper-raised:#FBF9F1; --paper-sunken:#E9E3CE;
+    --ink:#26312C; --ink-soft:#657064; --ink-faint:#8B9389;
+    --brass:#8C6A22; --brass-strong:#6E5119; --brass-light:#E7DAB3; --brass-bg:#F1E9CE;
+    --line:#D7CFAE;
+    --green:#3E7053; --green-bg:#E1EBE1;
+    --red:#AA4636; --red-bg:#F4E1DC;
+    --amber:#B4842C; --amber-bg:#F3E7C9;
+    --shadow-modal:0 12px 40px rgba(38,49,44,.28);
+    --font-serif:'Lora',Georgia,'Times New Roman',serif;
+    --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark){
+      --paper:#1B211C; --paper-raised:#232A24; --paper-sunken:#161B17;
+      --ink:#EDE8D6; --ink-soft:#B7BDAE; --ink-faint:#818A7B;
+      --brass:#D3AD5C; --brass-strong:#E8C878; --brass-light:#3A3324; --brass-bg:#2B2A1D;
+      --line:#3A4038;
+      --green:#7FBF9B; --green-bg:#1E2E24;
+      --red:#E1897A; --red-bg:#332120;
+      --amber:#E0B565; --amber-bg:#332A18;
+      --shadow-modal:0 12px 40px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#1B211C; --paper-raised:#232A24; --paper-sunken:#161B17;
+    --ink:#EDE8D6; --ink-soft:#B7BDAE; --ink-faint:#818A7B;
+    --brass:#D3AD5C; --brass-strong:#E8C878; --brass-light:#3A3324; --brass-bg:#2B2A1D;
+    --line:#3A4038;
+    --green:#7FBF9B; --green-bg:#1E2E24;
+    --red:#E1897A; --red-bg:#332120;
+    --amber:#E0B565; --amber-bg:#332A18;
+    --shadow-modal:0 12px 40px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper); color:var(--ink); font-family:var(--font-sans);
+    font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  #app{max-width:1180px;margin:0 auto;padding:0 20px 80px;}
+  h1,h2,h3,h4{font-family:var(--font-serif);font-weight:600;margin:0;color:var(--ink);}
+  a{color:var(--brass-strong);}
+  .num{font-variant-numeric:tabular-nums;}
+  button{font-family:var(--font-sans);cursor:pointer;}
+  input,select,textarea{font-family:var(--font-sans);font-size:14px;}
+  ::selection{background:var(--brass-light);}
+
+  /* ---- header ---- */
+  .topbar{position:sticky;top:0;z-index:20;background:var(--paper);padding:22px 0 14px;border-bottom:2px solid var(--brass);margin-bottom:18px;}
+  .topbar-row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+  .brand h1{font-size:26px;letter-spacing:.2px;}
+  .brand .sub{color:var(--ink-soft);font-size:13px;margin-top:3px;}
+  .brand .sub button{background:none;border:none;color:var(--brass-strong);text-decoration:underline;padding:0;font-size:13px;}
+  .actions-top{display:flex;gap:10px;flex-wrap:wrap;}
+  .tabs{display:flex;gap:22px;margin-top:16px;border-top:1px solid var(--line);padding-top:0;}
+  .tab-btn{background:none;border:none;padding:10px 2px;font-size:14px;color:var(--ink-soft);border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;}
+  .tab-btn.active{color:var(--ink);border-bottom-color:var(--brass);font-weight:600;}
+
+  /* ---- buttons ---- */
+  .btn{border:1px solid var(--ink);background:var(--paper-raised);color:var(--ink);padding:8px 14px;border-radius:3px;font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;gap:6px;}
+  .btn:hover{background:var(--brass-bg);border-color:var(--brass);}
+  .btn-primary{background:var(--brass);border-color:var(--brass);color:var(--paper-raised);}
+  .btn-primary:hover{background:var(--brass-strong);border-color:var(--brass-strong);}
+  .btn-ghost{border-color:transparent;background:none;}
+  .btn-ghost:hover{background:var(--paper-sunken);}
+  .btn-danger{border-color:var(--red);color:var(--red);background:none;}
+  .btn-danger:hover{background:var(--red-bg);}
+  .btn-sm{padding:5px 10px;font-size:12.5px;}
+  .btn[disabled]{opacity:.45;cursor:not-allowed;}
+
+  /* ---- cards / sections ---- */
+  .section{margin-bottom:34px;}
+  .section-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+  .section-head h2{font-size:19px;}
+  .kpis{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;}
+  .kpi{flex:1 1 170px;background:var(--paper-raised);border:1px solid var(--line);border-top:3px solid var(--brass);padding:14px 16px;border-radius:2px;}
+  .kpi .v{font-family:var(--font-serif);font-size:24px;font-weight:700;}
+  .kpi .l{color:var(--ink-soft);font-size:12.5px;margin-top:4px;}
+  .kpi.warn{border-top-color:var(--red);}
+  .kpi .v.warn{color:var(--red);}
+
+  .cour-card{background:var(--paper-raised);border:1px solid var(--line);border-radius:3px;margin-bottom:16px;overflow:hidden;}
+  .cour-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;cursor:pointer;gap:12px;flex-wrap:wrap;}
+  .cour-head:hover{background:var(--paper-sunken);}
+  .cour-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .chevron{display:inline-block;width:14px;color:var(--brass);font-size:12px;transition:transform .15s;}
+  .cour-loc{color:var(--ink-soft);font-size:13px;}
+  .cour-meta{display:flex;gap:16px;font-size:12.5px;color:var(--ink-soft);align-items:center;}
+  .cour-body{padding:0 18px 18px;border-top:1px solid var(--line);}
+  .cour-actions{display:flex;gap:8px;}
+
+  .maison-card{background:var(--paper);border:1px solid var(--line);border-radius:3px;margin-top:12px;}
+  .maison-head{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;gap:10px;flex-wrap:wrap;}
+  .maison-head:hover{background:var(--paper-sunken);}
+  .maison-title{font-weight:600;}
+  .maison-sub{color:var(--ink-soft);font-size:12.5px;}
+  .maison-summary{display:flex;gap:18px;font-size:13px;align-items:center;flex-wrap:wrap;}
+  .maison-body{padding:4px 14px 16px;border-top:1px solid var(--line);}
+
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
+  .badge-green{background:var(--green-bg);color:var(--green);}
+  .badge-red{background:var(--red-bg);color:var(--red);}
+  .badge-amber{background:var(--amber-bg);color:var(--amber);}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 16px;}
+  @media(max-width:640px){.grid2,.grid3{grid-template-columns:1fr;}}
+  .field label{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:3px;}
+  .field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--paper-raised);color:var(--ink);border-radius:3px;padding:8px 9px;}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--brass);box-shadow:0 0 0 2px var(--brass-light);}
+  .field textarea{resize:vertical;min-height:52px;}
+
+  .subblock{margin-top:18px;padding-top:14px;border-top:1px dashed var(--line);}
+  .subblock-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .subblock-head h4{font-size:14px;color:var(--ink-soft);font-weight:600;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  .table-wrap{overflow-x:auto;}
+  th{text-align:left;color:var(--ink-soft);font-weight:600;font-size:11.5px;padding:6px 8px;border-bottom:1px solid var(--brass);white-space:nowrap;}
+  td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  tr:last-child td{border-bottom:none;}
+  .row-actions{display:flex;gap:6px;justify-content:flex-end;}
+  .empty-hint{color:var(--ink-faint);font-size:13px;padding:12px 4px;font-style:italic;}
+
+  .form-box{background:var(--brass-bg);border:1px solid var(--brass-light);border-radius:3px;padding:14px;margin-top:12px;}
+  .form-actions{display:flex;gap:8px;margin-top:12px;}
+
+  /* ---- modal ---- */
+  .overlay{position:fixed;inset:0;background:rgba(20,24,20,.5);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:100;overflow:auto;}
+  .modal{background:var(--paper-raised);border-radius:4px;max-width:560px;width:100%;box-shadow:var(--shadow-modal);}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);}
+  .modal-body{padding:20px;}
+
+  .receipt{background:#fff;color:#1c231e;border:1px solid #ccc;padding:28px;font-family:var(--font-sans);}
+  .receipt h2{font-family:var(--font-serif);font-size:22px;letter-spacing:.3px;border-bottom:2px solid #8C6A22;padding-bottom:10px;margin-bottom:16px;color:#1c231e;}
+  .receipt .rnum{color:#657064;font-size:12.5px;margin-top:-10px;margin-bottom:16px;}
+  .receipt table{font-size:14px;}
+  .receipt td{border:none;padding:5px 0;}
+  .receipt td.rl{color:#657064;width:44%;}
+  .receipt .amount-box{background:#F1E9CE;border:1px solid #D7CFAE;padding:10px 14px;margin:14px 0;border-radius:3px;}
+  .receipt .amount-box .big{font-family:var(--font-serif);font-size:20px;font-weight:700;}
+  .receipt .sigs{display:flex;justify-content:space-between;margin-top:44px;font-size:12.5px;color:#657064;}
+  .receipt .sigs div{width:45%;border-top:1px solid #999;padding-top:6px;text-align:center;}
+
+  footer.hint{color:var(--ink-faint);font-size:12px;text-align:center;margin-top:30px;}
+
+  @media print{
+    body.print-mode #app > *:not(.print-target){display:none !important;}
+    body.print-mode{background:#fff;}
+    .print-target{position:static !important;background:none !important;box-shadow:none !important;padding:0 !important;}
+    .print-target .no-print{display:none !important;}
+    .print-target .modal{box-shadow:none;max-width:100%;}
+  }
+  .save-flag{font-size:12px;color:var(--ink-faint);}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script id="state-data" type="application/json">{"proprietaires":[],"cours":[],"nextIds":{"proprietaire":1,"cour":1,"maison":1,"paiement":1,"reparation":1,"locataire":1}}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* ===================== GABARIT DE PAGE (pour republication) ===================== */
+/* Capturé avant tout rendu : c'est le gabarit statique exact du document,
+   avec le bloc #state-data encore à son contenu d'origine. */
+var PAGE_TEMPLATE = '<!doctype html>\n' + document.documentElement.outerHTML;
+
+/* ===================== ENVIRONNEMENT ===================== */
+/* IN_CLAUDE : vrai lorsque la page tourne dans un artefact Claude (sauvegarde
+   automatique côté serveur disponible). Faux en dehors (ex. GitHub Pages) :
+   dans ce cas on utilise le stockage local du navigateur. */
+var IN_CLAUDE = (typeof window.claude !== 'undefined');
+var LOCAL_KEY = 'registre-immobilier-state-v1';
+
+/* ===================== ÉTAT ===================== */
+var state;
+(function initState() {
+  var embedded = JSON.parse(document.getElementById('state-data').textContent);
+  if (!IN_CLAUDE) {
+    try {
+      var local = localStorage.getItem(LOCAL_KEY);
+      if (local) { state = JSON.parse(local); return; }
+    } catch (e) {}
+  }
+  state = embedded;
+})();
+if (!state.cours) state.cours = [];
+if (!state.nextIds) state.nextIds = {};
+['proprietaire', 'cour', 'maison', 'paiement', 'reparation', 'locataire'].forEach(function (k) {
+  if (!state.nextIds[k]) state.nextIds[k] = 1;
+});
+/* Migration : ancien modèle à propriétaire unique -> tableau de propriétaires */
+if (!state.proprietaires) {
+  var legacyNom = (state.proprietaire && state.proprietaire.nom) || 'Propriétaire principal';
+  var legacyTel = (state.proprietaire && state.proprietaire.telephone) || '';
+  var legacyId = uid('proprietaire');
+  state.proprietaires = [{ id: legacyId, nom: legacyNom, telephone: legacyTel }];
+  state.cours.forEach(function (c) { if (!c.proprietaireId) c.proprietaireId = legacyId; });
+}
+delete state.proprietaire;
+state.cours.forEach(function (c) {
+  if (!c.proprietaireId && state.proprietaires.length) c.proprietaireId = state.proprietaires[0].id;
+  if (!c.reparationsGenerales) c.reparationsGenerales = [];
+  (c.maisons || []).forEach(function (m) {
+    if (!m.locataireId) m.locataireId = uid('locataire');
+  });
+});
+
+var _now = new Date();
+var ui = { tab: 'dashboard', openCours: {}, openMaisons: {}, addingCour: false,
+  addingMaisonTo: null, editingCour: null, editingMaison: null,
+  addingPaiementTo: null, addingReparationTo: null, printing: null, savedFlag: '',
+  filterProprietaire: 'all', addingProprietaire: false, editingProprietaire: null,
+  periodType: 'mois', periodYear: _now.getFullYear(), periodMonth: _now.getMonth() + 1,
+  periodQuarter: Math.ceil((_now.getMonth() + 1) / 3), periodSemester: (_now.getMonth() + 1) <= 6 ? 1 : 2 };
+try {
+  var saved = sessionStorage.getItem('immo-ui');
+  if (saved) ui = Object.assign(ui, JSON.parse(saved));
+} catch (e) {}
+
+var claudeArtifact = null;
+var claudeDownloads = null;
+(async function initCapabilities() {
+  try {
+    if (IN_CLAUDE && window.claude.use) {
+      claudeArtifact = await window.claude.use('artifact');
+      claudeDownloads = await window.claude.use('downloads');
+    }
+  } catch (e) {}
+})();
+
+/* ===================== UTILITAIRES ===================== */
+function uid(kind) {
+  var n = state.nextIds[kind] || 1;
+  state.nextIds[kind] = n + 1;
+  var prefix = { proprietaire: 'PR', cour: 'CR', maison: 'M', paiement: 'PM', reparation: 'RP', locataire: 'LOC' }[kind];
+  return prefix + '-' + String(n).padStart(3, '0');
+}
+function fmtMoney(n) {
+  n = Number(n) || 0;
+  return n.toLocaleString('fr-FR').replace(/\u202f|\u00a0/g, ' ') + ' FCFA';
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function val(id) {
+  var el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+function numVal(id) {
+  var v = val(id).replace(/\s/g, '').replace(',', '.');
+  var n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+function findCour(id) { return state.cours.find(function (c) { return c.id === id; }); }
+function findProprietaire(id) { return state.proprietaires.find(function (p) { return p.id === id; }); }
+function scopedCours() {
+  if (ui.filterProprietaire === 'all') return state.cours;
+  return state.cours.filter(function (c) { return c.proprietaireId === ui.filterProprietaire; });
+}
+function findMaison(id) {
+  for (var i = 0; i < state.cours.length; i++) {
+    var m = state.cours[i].maisons.find(function (m) { return m.id === id; });
+    if (m) return { cour: state.cours[i], maison: m };
+  }
+  return null;
+}
+function findMaisonByLocataireId(locId) {
+  locId = String(locId || '').trim().toLowerCase();
+  if (!locId) return null;
+  for (var i = 0; i < state.cours.length; i++) {
+    var m = state.cours[i].maisons.find(function (m) { return String(m.locataireId || '').trim().toLowerCase() === locId; });
+    if (m) return { cour: state.cours[i], maison: m };
+  }
+  return null;
+}
+function monthLabel(periode) {
+  if (!periode) return '';
+  var parts = periode.split('-');
+  if (parts.length !== 2) return periode;
+  var mois = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  var idx = parseInt(parts[1], 10) - 1;
+  return (mois[idx] || parts[1]) + ' ' + parts[0];
+}
+function currentPeriode() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function todayISO() { return new Date().toISOString().slice(0, 10); }
+
+function numberToFrenchWords(n) {
+  n = Math.round(Number(n) || 0);
+  if (n === 0) return 'zéro';
+  var units = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix',
+    'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+  var tens = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
+  function two(num) {
+    if (num < 20) return units[num];
+    var t = Math.floor(num / 10), u = num % 10;
+    if (t === 7 || t === 9) {
+      var base = t === 7 ? 'soixante' : 'quatre-vingt';
+      return base + (u === 1 && t === 7 ? ' et onze' : '-' + units[10 + u]);
+    }
+    if (u === 0) return tens[t] + (t === 8 ? 's' : '');
+    if (u === 1 && t !== 8) return tens[t] + ' et un';
+    return tens[t] + '-' + units[u];
+  }
+  function three(num) {
+    var h = Math.floor(num / 100), r = num % 100, str = '';
+    if (h > 0) {
+      str += (h === 1 ? 'cent' : units[h] + ' cent');
+      if (h > 1 && r === 0) str += 's';
+    }
+    if (r > 0) str += (str ? ' ' : '') + two(r);
+    return str;
+  }
+  var parts = [];
+  var millions = Math.floor(n / 1000000);
+  var milliers = Math.floor((n % 1000000) / 1000);
+  var reste = n % 1000;
+  if (millions > 0) parts.push(millions === 1 ? 'un million' : three(millions) + ' millions');
+  if (milliers > 0) parts.push(milliers === 1 ? 'mille' : three(milliers) + ' mille');
+  if (reste > 0) parts.push(three(reste));
+  var out = parts.join(' ');
+  return out.charAt(0).toUpperCase() + out.slice(1);
+}
+
+/* ===================== PERSISTENCE ===================== */
+function persistUi() {
+  try { sessionStorage.setItem('immo-ui', JSON.stringify(ui)); } catch (e) {}
+}
+function buildPublishHtml() {
+  var newJson = JSON.stringify(state).replace(/</g, '\\u003c');
+  return PAGE_TEMPLATE.replace(
+    /(<script id="state-data" type="application\/json">)[\s\S]*?(<\/script>)/,
+    function (m, p1, p2) { return p1 + newJson + p2; }
+  );
+}
+async function save() {
+  persistUi();
+  render();
+  if (IN_CLAUDE) {
+    if (claudeArtifact) {
+      try {
+        await claudeArtifact.publish(buildPublishHtml());
+      } catch (e) {
+        if (e && e.code === 'conflict') { /* la vue va se recharger */ }
+        else {
+          ui.savedFlag = 'Sauvegarde impossible (' + (e && e.code ? e.code : 'erreur') + ') — modifications conservées ici seulement.';
+          render();
+        }
+      }
+    } else {
+      ui.savedFlag = 'Mode aperçu : les modifications ne sont pas sauvegardées.';
+      render();
+    }
+  } else {
+    try {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(state));
+    } catch (e) {
+      ui.savedFlag = 'Sauvegarde locale impossible dans ce navigateur — modifications non conservées après fermeture.';
+      render();
+    }
+  }
+}
+
+/* ===================== PROPRIÉTAIRES ===================== */
+function showAddProprietaire() { ui.addingProprietaire = true; render(); }
+function cancelAddProprietaire() { ui.addingProprietaire = false; render(); }
+function submitAddProprietaire() {
+  var nom = val('f-prop-nom');
+  if (!nom) { alert('Le nom du propriétaire est obligatoire.'); return; }
+  var p = { id: uid('proprietaire'), nom: nom, telephone: val('f-prop-tel') };
+  state.proprietaires.push(p);
+  ui.addingProprietaire = false;
+  save();
+}
+function showEditProprietaire(id) { ui.editingProprietaire = id; render(); }
+function cancelEditProprietaire() { ui.editingProprietaire = null; render(); }
+function submitEditProprietaire(id) {
+  var p = findProprietaire(id);
+  if (!p) return;
+  var nom = val('f-eprop-nom-' + id);
+  if (!nom) { alert('Le nom du propriétaire est obligatoire.'); return; }
+  p.nom = nom; p.telephone = val('f-eprop-tel-' + id);
+  ui.editingProprietaire = null;
+  save();
+}
+function deleteProprietaire(id) {
+  var p = findProprietaire(id);
+  if (!p) return;
+  var cours = state.cours.filter(function (c) { return c.proprietaireId === id; });
+  var nbMaisons = cours.reduce(function (s, c) { return s + c.maisons.length; }, 0);
+  var msg = 'Supprimer le propriétaire « ' + p.nom + ' »';
+  if (cours.length) msg += ', ainsi que ses ' + cours.length + ' cour(s) et ' + nbMaisons + ' maison(s) avec tout leur historique';
+  msg += ' ? Cette action est irréversible.';
+  if (!confirm(msg)) return;
+  state.cours = state.cours.filter(function (c) { return c.proprietaireId !== id; });
+  state.proprietaires = state.proprietaires.filter(function (x) { return x.id !== id; });
+  if (ui.filterProprietaire === id) ui.filterProprietaire = 'all';
+  save();
+}
+function setFilterProprietaire(v) { ui.filterProprietaire = v; persistUi(); render(); }
+
+/* ===================== FILTRES DE PÉRIODE (tableau de bord) ===================== */
+function setPeriodType(v) { ui.periodType = v; persistUi(); render(); }
+function setPeriodYear(v) { ui.periodYear = parseInt(v, 10); persistUi(); render(); }
+function setPeriodMonth(v) { ui.periodMonth = parseInt(v, 10); persistUi(); render(); }
+function setPeriodQuarter(v) { ui.periodQuarter = parseInt(v, 10); persistUi(); render(); }
+function setPeriodSemester(v) { ui.periodSemester = parseInt(v, 10); persistUi(); render(); }
+function periodRange() {
+  var y = ui.periodYear, startM, endM;
+  if (ui.periodType === 'mois') { startM = endM = ui.periodMonth; }
+  else if (ui.periodType === 'trimestre') { startM = (ui.periodQuarter - 1) * 3 + 1; endM = startM + 2; }
+  else if (ui.periodType === 'semestre') { startM = ui.periodSemester === 1 ? 1 : 7; endM = ui.periodSemester === 1 ? 6 : 12; }
+  else { startM = 1; endM = 12; }
+  return { start: y + '-' + String(startM).padStart(2, '0'), end: y + '-' + String(endM).padStart(2, '0') };
+}
+function periodLabel() {
+  var r = periodRange();
+  if (ui.periodType === 'mois') return monthLabel(r.start);
+  if (ui.periodType === 'annee') return 'Année ' + ui.periodYear;
+  if (ui.periodType === 'trimestre') return 'T' + ui.periodQuarter + ' ' + ui.periodYear + ' (' + monthLabel(r.start) + ' – ' + monthLabel(r.end) + ')';
+  return 'S' + ui.periodSemester + ' ' + ui.periodYear + ' (' + monthLabel(r.start) + ' – ' + monthLabel(r.end) + ')';
+}
+
+
+function toggleCour(id) { ui.openCours[id] = !ui.openCours[id]; persistUi(); render(); }
+function toggleMaison(id) { ui.openMaisons[id] = !ui.openMaisons[id]; persistUi(); render(); }
+function showAddCour() {
+  if (!state.proprietaires.length) { alert('Créez d\'abord un propriétaire dans l\'onglet « Propriétaires ».'); return; }
+  ui.addingCour = true; render();
+}
+function cancelAddCour() { ui.addingCour = false; render(); }
+function submitAddCour() {
+  var nom = val('f-cour-nom');
+  if (!nom) { alert('Le nom de la cour est obligatoire.'); return; }
+  var proprietaireId = val('f-cour-proprietaire');
+  if (!proprietaireId) { alert('Sélectionnez un propriétaire.'); return; }
+  var c = { id: uid('cour'), proprietaireId: proprietaireId, nom: nom, localisation: val('f-cour-loc'), description: val('f-cour-desc'),
+    maisons: [], reparationsGenerales: [] };
+  state.cours.push(c);
+  ui.addingCour = false;
+  ui.openCours[c.id] = true;
+  save();
+}
+function showEditCour(id) { ui.editingCour = id; render(); }
+function cancelEditCour() { ui.editingCour = null; render(); }
+function submitEditCour(id) {
+  var c = findCour(id);
+  if (!c) return;
+  var nom = val('f-ecour-nom-' + id);
+  if (!nom) { alert('Le nom de la cour est obligatoire.'); return; }
+  var propId = val('f-ecour-proprietaire-' + id);
+  c.nom = nom; c.localisation = val('f-ecour-loc-' + id); c.description = val('f-ecour-desc-' + id);
+  if (propId) c.proprietaireId = propId;
+  ui.editingCour = null;
+  save();
+}
+function deleteCour(id) {
+  var c = findCour(id);
+  if (!c) return;
+  if (!confirm('Supprimer la cour "' + c.nom + '" et toutes ses maisons, paiements et réparations ? Cette action est irréversible.')) return;
+  state.cours = state.cours.filter(function (x) { return x.id !== id; });
+  save();
+}
+
+/* ===================== ACTIONS : MAISONS ===================== */
+function showAddMaison(courId) { ui.addingMaisonTo = courId; render(); }
+function cancelAddMaison() { ui.addingMaisonTo = null; render(); }
+function submitAddMaison(courId) {
+  var c = findCour(courId);
+  if (!c) return;
+  var nom = val('f-maison-nom');
+  if (!nom) { alert('Le nom / numéro de la maison est obligatoire.'); return; }
+  var m = {
+    id: uid('maison'), locataireId: val('f-maison-locid') || uid('locataire'), nom: nom, type: val('f-maison-type'), pieces: numVal('f-maison-pieces'),
+    superficie: numVal('f-maison-superficie'), equipements: val('f-maison-equip'),
+    adresse: val('f-maison-adresse'), loyer: numVal('f-maison-loyer'),
+    locataireNom: val('f-maison-locataire'), locataireTel: val('f-maison-tel'),
+    dateEntree: val('f-maison-date'), paiements: [], reparations: []
+  };
+  c.maisons.push(m);
+  ui.addingMaisonTo = null;
+  ui.openMaisons[m.id] = true;
+  save();
+}
+function showEditMaison(id) { ui.editingMaison = id; render(); }
+function cancelEditMaison() { ui.editingMaison = null; render(); }
+function submitEditMaison(id) {
+  var found = findMaison(id);
+  if (!found) return;
+  var m = found.maison;
+  var nom = val('f-emaison-nom-' + id);
+  if (!nom) { alert('Le nom / numéro de la maison est obligatoire.'); return; }
+  m.nom = nom; m.type = val('f-emaison-type-' + id); m.pieces = numVal('f-emaison-pieces-' + id);
+  m.superficie = numVal('f-emaison-superficie-' + id); m.equipements = val('f-emaison-equip-' + id);
+  m.adresse = val('f-emaison-adresse-' + id); m.loyer = numVal('f-emaison-loyer-' + id);
+  m.locataireNom = val('f-emaison-locataire-' + id); m.locataireTel = val('f-emaison-tel-' + id);
+  m.locataireId = val('f-emaison-locid-' + id) || m.locataireId;
+  m.dateEntree = val('f-emaison-date-' + id);
+  ui.editingMaison = null;
+  save();
+}
+function deleteMaison(id) {
+  var found = findMaison(id);
+  if (!found) return;
+  if (!confirm('Supprimer la maison "' + found.maison.nom + '" et tout son historique ?')) return;
+  found.cour.maisons = found.cour.maisons.filter(function (x) { return x.id !== id; });
+  save();
+}
+
+/* ===================== ACTIONS : PAIEMENTS ===================== */
+function showAddPaiement(maisonId) {
+  ui.addingPaiementTo = maisonId;
+  var found = findMaison(maisonId);
+  ui._prefillDu = found ? found.maison.loyer : 0;
+  render();
+}
+function cancelAddPaiement() { ui.addingPaiementTo = null; render(); }
+function submitAddPaiement(maisonId) {
+  var found = findMaison(maisonId);
+  if (!found) return;
+  var periode = val('f-pay-periode');
+  if (!periode) { alert('Le mois concerné est obligatoire.'); return; }
+  var p = {
+    id: uid('paiement'), periode: periode, dateEcheance: val('f-pay-echeance'),
+    datePaiement: val('f-pay-date'), montantDu: numVal('f-pay-du'), montantPaye: numVal('f-pay-paye'),
+    mode: val('f-pay-mode'), note: val('f-pay-note'), numeroQuittance: null
+  };
+  found.maison.paiements.push(p);
+  found.maison.paiements.sort(function (a, b) { return (a.periode || '').localeCompare(b.periode || ''); });
+  ui.addingPaiementTo = null;
+  save();
+}
+function deletePaiement(maisonId, payId) {
+  var found = findMaison(maisonId);
+  if (!found) return;
+  if (!confirm('Supprimer ce paiement ?')) return;
+  found.maison.paiements = found.maison.paiements.filter(function (x) { return x.id !== payId; });
+  save();
+}
+
+/* ===================== ACTIONS : RÉPARATIONS ===================== */
+function showAddReparation(scope, ownerId) { ui.addingReparationTo = { scope: scope, id: ownerId }; render(); }
+function cancelAddReparation() { ui.addingReparationTo = null; render(); }
+function submitAddReparation(scope, ownerId) {
+  var desc = val('f-rep-desc');
+  if (!desc) { alert('La description des travaux est obligatoire.'); return; }
+  var r = {
+    id: uid('reparation'), date: val('f-rep-date') || todayISO(), description: desc,
+    montant: numVal('f-rep-montant'), prestataire: val('f-rep-prestataire'), statut: val('f-rep-statut') || 'À prévoir'
+  };
+  if (scope === 'generale') {
+    var c = findCour(ownerId);
+    if (!c) return;
+    c.reparationsGenerales.push(r);
+  } else {
+    var found = findMaison(ownerId);
+    if (!found) return;
+    found.maison.reparations.push(r);
+  }
+  ui.addingReparationTo = null;
+  save();
+}
+function deleteReparation(scope, ownerId, repId) {
+  if (!confirm('Supprimer cette réparation ?')) return;
+  if (scope === 'generale') {
+    var c = findCour(ownerId);
+    if (!c) return;
+    c.reparationsGenerales = c.reparationsGenerales.filter(function (x) { return x.id !== repId; });
+  } else {
+    var found = findMaison(ownerId);
+    if (!found) return;
+    found.maison.reparations = found.maison.reparations.filter(function (x) { return x.id !== repId; });
+  }
+  save();
+}
+
+/* ===================== QUITTANCES ===================== */
+function openQuittance(maisonId, payId) {
+  var found = findMaison(maisonId);
+  if (!found) return;
+  var p = found.maison.paiements.find(function (x) { return x.id === payId; });
+  if (!p) return;
+  if (!p.numeroQuittance) {
+    var year = (p.datePaiement || todayISO()).slice(0, 4);
+    p.numeroQuittance = 'QT-' + year + '-' + String(state.nextIds.paiement).padStart(3, '0') + '-' + p.id.split('-')[1];
+  }
+  ui.printing = { maisonId: maisonId, payId: payId };
+  save();
+}
+function closeQuittance() { ui.printing = null; document.body.classList.remove('print-mode'); persistUi(); render(); }
+
+function buildReceiptStandaloneHtml(c, m, p, montantMots) {
+  var owner = findProprietaire(c.proprietaireId) || { nom: '', telephone: '' };
+  var rows = [
+    ['Bailleur', owner.nom || '—'],
+    ['Téléphone bailleur', owner.telephone || '—'],
+    ['Cour', c.nom],
+    ['Maison', m.nom + (m.adresse ? ' — ' + m.adresse : '')],
+    ['Locataire', m.locataireNom || '—'],
+    ['Période concernée', monthLabel(p.periode)],
+    ['Mode de paiement', p.mode || '—'],
+    ['Date de paiement', p.datePaiement || '—']
+  ].map(function (r) { return recRow(r[0], r[1]); }).join('');
+  return '<!doctype html><html lang="fr"><head><meta charset="utf-8">' +
+    '<title>Quittance ' + esc(p.numeroQuittance || '') + '</title>' +
+    '<style>' +
+    'body{font-family:Arial,Helvetica,sans-serif;color:#1c231e;background:#fff;margin:0;padding:36px;}' +
+    'h2{font-family:Georgia,"Times New Roman",serif;font-size:22px;letter-spacing:.3px;border-bottom:2px solid #8C6A22;padding-bottom:10px;margin-bottom:16px;}' +
+    '.rnum{color:#657064;font-size:12.5px;margin-top:-10px;margin-bottom:18px;}' +
+    'table{width:100%;font-size:14px;border-collapse:collapse;}' +
+    'td{padding:5px 0;border:none;vertical-align:top;}' +
+    'td.rl{color:#657064;width:44%;}' +
+    '.amount-box{background:#F1E9CE;border:1px solid #D7CFAE;padding:12px 16px;margin:16px 0;border-radius:3px;}' +
+    '.amount-box .big{font-family:Georgia,"Times New Roman",serif;font-size:20px;font-weight:700;}' +
+    '.amount-note{font-size:12.5px;color:#657064;margin-top:6px;}' +
+    '.sigs{display:flex;justify-content:space-between;margin-top:52px;font-size:12.5px;color:#657064;}' +
+    '.sigs div{width:45%;border-top:1px solid #999;padding-top:6px;text-align:center;}' +
+    '@media print{body{padding:0;}}' +
+    '</style></head><body>' +
+    '<h2>Quittance de loyer</h2>' +
+    '<div class="rnum">N&deg; ' + esc(p.numeroQuittance || '') + '</div>' +
+    '<table>' + rows + '</table>' +
+    '<div class="amount-box"><div>Montant re&ccedil;u</div><div class="big">' + fmtMoney(p.montantPaye) + '</div>' +
+    '<div class="amount-note">Arr&ecirc;t&eacute;e la pr&eacute;sente quittance &agrave; la somme de&nbsp;: ' + esc(montantMots) + '.</div></div>' +
+    '<div class="sigs"><div>Signature du bailleur</div><div>Signature du locataire</div></div>' +
+    '<script>window.onload=function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},150);};</' + 'script>' +
+    '</body></html>';
+}
+
+function doPrint() {
+  if (!ui.printing) return;
+  var found = findMaison(ui.printing.maisonId);
+  if (!found) return;
+  var p = found.maison.paiements.find(function (x) { return x.id === ui.printing.payId; });
+  if (!p) return;
+  var montantMots = numberToFrenchWords(p.montantPaye) + ' francs CFA';
+  var html = buildReceiptStandaloneHtml(found.cour, found.maison, p, montantMots);
+  var w = null;
+  try { w = window.open('', '_blank'); } catch (e) { w = null; }
+  if (w && !w.closed) {
+    try {
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      return;
+    } catch (e) { /* on retente le repli ci-dessous */ }
+  }
+  // Repli : la nouvelle fenêtre a été bloquée — on imprime la page actuelle.
+  document.body.classList.add('print-mode');
+  try { window.print(); } catch (e) {}
+  alert("La fenêtre d'impression a été bloquée par le navigateur. Autorisez les pop-ups pour ce site, ou utilisez le raccourci Ctrl+P (Cmd+P sur Mac) pour imprimer la quittance affichée.");
+}
+
+function quickFillQuittance() {
+  var locId = val('f-quick-locid');
+  var periode = val('f-quick-mois');
+  ui.quickFillError = '';
+  if (!locId || !periode) { ui.quickFillError = "Renseignez l'ID du locataire et le mois."; render(); return; }
+  var found = findMaisonByLocataireId(locId);
+  if (!found) { ui.quickFillError = 'Aucun locataire trouvé avec l\'ID « ' + locId + ' ».'; render(); return; }
+  var m = found.maison;
+  var p = (m.paiements || []).find(function (x) { return x.periode === periode; });
+  if (p) {
+    if (Number(p.montantPaye) <= 0) {
+      p.montantPaye = p.montantDu || m.loyer;
+      if (!p.datePaiement) p.datePaiement = todayISO();
+      if (!p.mode) p.mode = 'Espèces';
+    }
+  } else {
+    p = {
+      id: uid('paiement'), periode: periode, dateEcheance: '', datePaiement: todayISO(),
+      montantDu: m.loyer, montantPaye: m.loyer, mode: 'Espèces', note: 'Généré depuis le remplissage rapide', numeroQuittance: null
+    };
+    m.paiements.push(p);
+    m.paiements.sort(function (a, b) { return (a.periode || '').localeCompare(b.periode || ''); });
+  }
+  openQuittance(m.id, p.id);
+}
+
+/* ===================== EXPORT EXCEL ===================== */
+async function exportExcel() {
+  if (typeof XLSX === 'undefined') { alert("La bibliothèque d'export n'a pas pu se charger. Vérifiez la connexion."); return; }
+  var maisonsRows = [], paiementsRows = [], reparationsRows = [];
+  state.cours.forEach(function (c) {
+    var ownerName = (findProprietaire(c.proprietaireId) || {}).nom || '';
+    c.reparationsGenerales.forEach(function (r) {
+      reparationsRows.push({
+        'Propriétaire': ownerName, 'Cour': c.nom, 'Maison': 'Générale', 'Date': r.date, 'Description': r.description,
+        'Montant (FCFA)': r.montant, 'Prestataire': r.prestataire, 'Statut': r.statut
+      });
+    });
+    c.maisons.forEach(function (m) {
+      maisonsRows.push({
+        'Propriétaire': ownerName, 'ID': m.id, 'ID Locataire': m.locataireId || '', 'Cour': c.nom, 'Maison': m.nom, 'Type': m.type, 'Pièces': m.pieces,
+        'Superficie (m²)': m.superficie, 'Équipements': m.equipements, 'Localisation': m.adresse,
+        'Loyer mensuel (FCFA)': m.loyer, 'Locataire': m.locataireNom, 'Téléphone': m.locataireTel,
+        "Date d'entrée": m.dateEntree
+      });
+      m.paiements.forEach(function (p) {
+        paiementsRows.push({
+          'Propriétaire': ownerName, 'Cour': c.nom, 'Maison': m.nom, 'Locataire': m.locataireNom, 'Mois concerné': monthLabel(p.periode),
+          "Date d'échéance": p.dateEcheance, 'Date de paiement': p.datePaiement,
+          'Montant dû (FCFA)': p.montantDu, 'Montant payé (FCFA)': p.montantPaye,
+          'Mode de paiement': p.mode, 'Statut': p.montantPaye >= p.montantDu && p.montantDu > 0 ? 'Payé' : (p.montantPaye > 0 ? 'Partiel' : 'Impayé'),
+          'N° Quittance': p.numeroQuittance || '', 'Observations': p.note
+        });
+      });
+      m.reparations.forEach(function (r) {
+        reparationsRows.push({
+          'Propriétaire': ownerName, 'Cour': c.nom, 'Maison': m.nom, 'Date': r.date, 'Description': r.description,
+          'Montant (FCFA)': r.montant, 'Prestataire': r.prestataire, 'Statut': r.statut
+        });
+      });
+    });
+  });
+  var wb = XLSX.utils.book_new();
+  function addSheet(rows, name, cols) {
+    var ws = rows.length ? XLSX.utils.json_to_sheet(rows) : XLSX.utils.aoa_to_sheet([cols || ['Aucune donnée']]);
+    ws['!cols'] = (cols || Object.keys(rows[0] || {})).map(function (k) { return { wch: Math.min(Math.max(String(k).length + 4, 12), 32) }; });
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  }
+  addSheet(maisonsRows, 'Maisons', ['Propriétaire','ID','ID Locataire','Cour','Maison','Type','Pièces','Superficie (m²)','Équipements','Localisation','Loyer mensuel (FCFA)','Locataire','Téléphone',"Date d'entrée"]);
+  addSheet(paiementsRows, 'Loyers', ['Propriétaire','Cour','Maison','Locataire','Mois concerné',"Date d'échéance",'Date de paiement','Montant dû (FCFA)','Montant payé (FCFA)','Mode de paiement','Statut','N° Quittance','Observations']);
+  addSheet(reparationsRows, 'Réparations', ['Propriétaire','Cour','Maison','Date','Description','Montant (FCFA)','Prestataire','Statut']);
+
+  var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  var blob = new Blob([wbout], { type: 'application/octet-stream' });
+  var filename = 'Registre_Immobilier_' + todayISO() + '.xlsx';
+  if (claudeDownloads) {
+    try {
+      await claudeDownloads.save({ filename: filename, data: blob });
+      return;
+    } catch (e) { /* fallback ci-dessous */ }
+  }
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function setTab(t) { ui.tab = t; persistUi(); render(); }
+
+/* ===================== CALCULS ===================== */
+function computeTotals() {
+  var range = periodRange();
+  var cours = scopedCours();
+  var t = { nbCours: cours.length, nbMaisons: 0, du: 0, paye: 0, impaye: 0, reparations: 0, periodLabel: periodLabel() };
+  cours.forEach(function (c) {
+    t.reparations += (c.reparationsGenerales || []).filter(function (r) { return r.date >= range.start + '-01' && r.date <= range.end + '-31'; })
+      .reduce(function (s, r) { return s + (Number(r.montant) || 0); }, 0);
+    c.maisons.forEach(function (m) {
+      t.nbMaisons++;
+      t.reparations += (m.reparations || []).filter(function (r) { return r.date >= range.start + '-01' && r.date <= range.end + '-31'; })
+        .reduce(function (s, r) { return s + (Number(r.montant) || 0); }, 0);
+      (m.paiements || []).forEach(function (p) {
+        if (p.periode >= range.start && p.periode <= range.end) {
+          t.du += Number(p.montantDu) || 0;
+          t.paye += Number(p.montantPaye) || 0;
+        }
+      });
+    });
+  });
+  t.impaye = Math.max(0, t.du - t.paye);
+  return t;
+}
+function daysLate(p) {
+  var dueStr = p.dateEcheance || (p.periode ? p.periode + '-28' : todayISO());
+  var due = new Date(dueStr);
+  var today = new Date(todayISO());
+  var diff = Math.round((today - due) / 86400000);
+  return diff > 0 ? diff : 0;
+}
+function computeArrears() {
+  var rows = [];
+  scopedCours().forEach(function (c) {
+    c.maisons.forEach(function (m) {
+      (m.paiements || []).forEach(function (p) {
+        var solde = (Number(p.montantDu) || 0) - (Number(p.montantPaye) || 0);
+        if (solde <= 0) return;
+        var late = p.dateEcheance ? (p.dateEcheance < todayISO()) : (p.periode && p.periode < currentPeriode());
+        if (!late) return;
+        rows.push({ cour: c, maison: m, p: p, solde: solde, jours: daysLate(p) });
+      });
+    });
+  });
+  rows.sort(function (a, b) { return b.jours - a.jours; });
+  return rows;
+}
+
+
+/* ===================== RENDU : TOPBAR ===================== */
+function renderTopbar() {
+  var ownerOptions = '<option value="all"' + (ui.filterProprietaire === 'all' ? ' selected' : '') + '>Tous les propriétaires</option>' +
+    state.proprietaires.map(function (p) {
+      return '<option value="' + p.id + '"' + (ui.filterProprietaire === p.id ? ' selected' : '') + '>' + esc(p.nom) + '</option>';
+    }).join('');
+  return '' +
+    '<div class="topbar">' +
+      '<div class="topbar-row">' +
+        '<div class="brand"><h1>Registre Immobilier</h1><div class="sub">Suivi multi-propriétaires &middot; loyers, réparations et quittances</div></div>' +
+        '<div class="actions-top">' +
+          '<select onchange="setFilterProprietaire(this.value)" style="padding:8px 10px;border:1px solid var(--line);border-radius:3px;background:var(--paper-raised);color:var(--ink);font-size:13.5px;min-width:190px;">' + ownerOptions + '</select>' +
+          '<button class="btn" onclick="exportExcel()">&#128190; Exporter en Excel</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="tabs">' +
+        tabBtn('dashboard', "Vue d'ensemble") +
+        tabBtn('proprietaires', 'Propriétaires') +
+        tabBtn('registre', 'Cours &amp; maisons') +
+        tabBtn('quittances', 'Quittances') +
+      '</div>' +
+    '</div>';
+}
+function tabBtn(id, label) {
+  return '<button class="tab-btn' + (ui.tab === id ? ' active' : '') + '" onclick="setTab(\'' + id + '\')">' + label + '</button>';
+}
+
+/* ===================== RENDU : PROPRIÉTAIRES ===================== */
+function renderProprietaires() {
+  var html = '<div class="section-head"><h2>Propriétaires</h2>' +
+    (ui.addingProprietaire ? '' : '<button class="btn btn-primary" onclick="showAddProprietaire()">+ Nouveau propriétaire</button>') + '</div>';
+
+  if (ui.addingProprietaire) {
+    html += '<div class="form-box"><h4 style="margin-bottom:10px;">Nouveau propriétaire</h4><div class="grid2">' +
+      field('Nom *', 'text', 'f-prop-nom', '', 'Ex : Mamadou Sissao') +
+      field('Téléphone', 'text', 'f-prop-tel', '') + '</div>' +
+      '<div class="form-actions"><button class="btn btn-primary" onclick="submitAddProprietaire()">Enregistrer</button>' +
+      '<button class="btn btn-ghost" onclick="cancelAddProprietaire()">Annuler</button></div></div>';
+  }
+
+  if (!state.proprietaires.length && !ui.addingProprietaire) {
+    html += '<div class="empty-hint">Aucun propriétaire enregistré. Créez-en un pour pouvoir ajouter des cours et des maisons.</div>';
+  }
+
+  state.proprietaires.forEach(function (p) {
+    var cours = state.cours.filter(function (c) { return c.proprietaireId === p.id; });
+    var nbMaisons = cours.reduce(function (s, c) { return s + c.maisons.length; }, 0);
+    var totalLoyer = cours.reduce(function (s, c) { return s + c.maisons.reduce(function (ss, m) { return ss + (Number(m.loyer) || 0); }, 0); }, 0);
+    html += '<div class="cour-card"><div class="cour-body" style="border-top:none;padding-top:16px;">';
+    if (ui.editingProprietaire === p.id) {
+      html += '<div class="form-box"><div class="grid2">' +
+        field('Nom *', 'text', 'f-eprop-nom-' + p.id, p.nom) +
+        field('Téléphone', 'text', 'f-eprop-tel-' + p.id, p.telephone) + '</div>' +
+        '<div class="form-actions"><button class="btn btn-primary" onclick="submitEditProprietaire(\'' + p.id + '\')">Enregistrer</button>' +
+        '<button class="btn btn-ghost" onclick="cancelEditProprietaire()">Annuler</button></div></div>';
+    } else {
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">' +
+        '<div><h3 style="display:inline;">' + esc(p.nom) + '</h3>' + (p.telephone ? ' <span class="cour-loc">&middot; ' + esc(p.telephone) + '</span>' : '') + '</div>' +
+        '<div class="cour-meta"><span>' + cours.length + ' cour(s)</span><span>' + nbMaisons + ' maison(s)</span><span>' + fmtMoney(totalLoyer) + '/mois</span></div>' +
+        '</div>' +
+        '<div class="cour-actions" style="margin-top:12px;">' +
+        '<button class="btn btn-sm btn-ghost" onclick="showEditProprietaire(\'' + p.id + '\')">Modifier</button>' +
+        '<button class="btn btn-sm" onclick="setFilterProprietaire(\'' + p.id + '\');setTab(\'registre\')">Voir ses cours</button>' +
+        '<button class="btn btn-sm btn-danger" onclick="deleteProprietaire(\'' + p.id + '\')">Supprimer</button>' +
+        '</div>';
+    }
+    html += '</div></div>';
+  });
+  return html;
+}
+
+/* ===================== RENDU : FILTRES DE PÉRIODE ===================== */
+function periodTypeSelect() {
+  var opts = [['mois', 'Mois'], ['trimestre', 'Trimestre'], ['semestre', 'Semestre'], ['annee', 'Année']]
+    .map(function (o) { return '<option value="' + o[0] + '"' + (ui.periodType === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+  return '<div class="field"><label>Type de période</label><select onchange="setPeriodType(this.value)">' + opts + '</select></div>';
+}
+function periodYearSelect() {
+  var current = new Date().getFullYear();
+  var years = [];
+  for (var y = current - 3; y <= current + 1; y++) years.push(y);
+  var opts = years.map(function (y) { return '<option value="' + y + '"' + (ui.periodYear === y ? ' selected' : '') + '>' + y + '</option>'; }).join('');
+  return '<div class="field"><label>Année</label><select onchange="setPeriodYear(this.value)">' + opts + '</select></div>';
+}
+function periodSubSelect() {
+  if (ui.periodType === 'mois') {
+    var moisNoms = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    var opts = moisNoms.map(function (nm, i) { return '<option value="' + (i + 1) + '"' + (ui.periodMonth === i + 1 ? ' selected' : '') + '>' + nm + '</option>'; }).join('');
+    return '<div class="field"><label>Mois</label><select onchange="setPeriodMonth(this.value)">' + opts + '</select></div>';
+  }
+  if (ui.periodType === 'trimestre') {
+    var labels = ['T1 (Jan&ndash;Mars)', 'T2 (Avr&ndash;Juin)', 'T3 (Juil&ndash;Sept)', 'T4 (Oct&ndash;Déc)'];
+    var opts2 = labels.map(function (lb, i) { return '<option value="' + (i + 1) + '"' + (ui.periodQuarter === i + 1 ? ' selected' : '') + '>' + lb + '</option>'; }).join('');
+    return '<div class="field"><label>Trimestre</label><select onchange="setPeriodQuarter(this.value)">' + opts2 + '</select></div>';
+  }
+  if (ui.periodType === 'semestre') {
+    var labels2 = ['S1 (Jan&ndash;Juin)', 'S2 (Juil&ndash;Déc)'];
+    var opts3 = labels2.map(function (lb, i) { return '<option value="' + (i + 1) + '"' + (ui.periodSemester === i + 1 ? ' selected' : '') + '>' + lb + '</option>'; }).join('');
+    return '<div class="field"><label>Semestre</label><select onchange="setPeriodSemester(this.value)">' + opts3 + '</select></div>';
+  }
+  return '<div></div>';
+}
+
+/* ===================== RENDU : DASHBOARD ===================== */
+function renderDashboard() {
+  var t = computeTotals();
+  var arrears = computeArrears();
+  var totalArrears = arrears.reduce(function (s, r) { return s + r.solde; }, 0);
+
+  var html = '<div class="form-box" style="margin-bottom:18px;"><div class="grid3">' +
+    periodTypeSelect() + periodYearSelect() + periodSubSelect() + '</div></div>';
+
+  html += '<div class="section"><div class="section-head"><h2>' + esc(t.periodLabel) + '</h2></div><div class="kpis">' +
+    kpi(t.nbCours, 'Cour' + (t.nbCours > 1 ? 's' : '')) +
+    kpi(t.nbMaisons, 'Maison' + (t.nbMaisons > 1 ? 's' : '') + ' au total') +
+    kpi(fmtMoney(t.du), 'Loyers attendus') +
+    kpi(fmtMoney(t.paye), 'Loyers perçus') +
+    kpi(fmtMoney(t.impaye), 'Impayés sur la période', t.impaye > 0) +
+    kpi(fmtMoney(t.reparations), 'Réparations sur la période') +
+    '</div></div>';
+
+  var cours = scopedCours();
+  if (!cours.length) {
+    html += '<div class="empty-hint">Aucune cour pour la sélection actuelle.</div>';
+  } else {
+    var range = periodRange();
+    html += '<div class="section"><div class="section-head"><h2>Situation par cour</h2></div><div class="table-wrap"><table>' +
+      '<tr><th>Cour</th><th>Localisation</th><th class="num">Maisons</th><th class="num">Loyers perçus</th><th class="num">Impayés</th><th class="num">Réparations</th></tr>';
+    cours.forEach(function (c) {
+      var cd = 0, cp = 0, crep = (c.reparationsGenerales || []).filter(function (r) { return r.date >= range.start + '-01' && r.date <= range.end + '-31'; })
+        .reduce(function (s, r) { return s + (Number(r.montant) || 0); }, 0);
+      c.maisons.forEach(function (m) {
+        crep += (m.reparations || []).filter(function (r) { return r.date >= range.start + '-01' && r.date <= range.end + '-31'; })
+          .reduce(function (s, r) { return s + (Number(r.montant) || 0); }, 0);
+        (m.paiements || []).forEach(function (p) {
+          if (p.periode >= range.start && p.periode <= range.end) { cd += Number(p.montantDu) || 0; cp += Number(p.montantPaye) || 0; }
+        });
+      });
+      html += '<tr><td>' + esc(c.nom) + '</td><td>' + esc(c.localisation || '—') + '</td><td class="num">' + c.maisons.length + '</td>' +
+        '<td class="num">' + fmtMoney(cp) + '</td><td class="num">' + fmtMoney(Math.max(0, cd - cp)) + '</td><td class="num">' + fmtMoney(crep) + '</td></tr>';
+    });
+    html += '</table></div></div>';
+  }
+
+  html += '<div class="section"><div class="section-head"><h2>Loyers en retard</h2>' +
+    '<span class="badge badge-red" style="font-size:12.5px;padding:4px 10px;">Total en retard : ' + fmtMoney(totalArrears) + '</span></div>';
+  if (!arrears.length) {
+    html += '<div class="empty-hint">Aucun loyer en retard pour la sélection actuelle.</div></div>';
+  } else {
+    html += '<div class="table-wrap"><table><tr><th>Cour</th><th>Maison</th><th>Locataire</th><th>Mois</th><th>Échéance</th><th class="num">Dû</th><th class="num">Payé</th><th class="num">Solde</th><th class="num">Jours de retard</th></tr>';
+    arrears.forEach(function (r) {
+      html += '<tr><td>' + esc(r.cour.nom) + '</td><td>' + esc(r.maison.nom) + '</td><td>' + esc(r.maison.locataireNom || '—') + '</td>' +
+        '<td>' + esc(monthLabel(r.p.periode)) + '</td><td>' + esc(r.p.dateEcheance || '—') + '</td>' +
+        '<td class="num">' + fmtMoney(r.p.montantDu) + '</td><td class="num">' + fmtMoney(r.p.montantPaye) + '</td>' +
+        '<td class="num" style="color:var(--red);font-weight:600;">' + fmtMoney(r.solde) + '</td>' +
+        '<td class="num">' + r.jours + '</td></tr>';
+    });
+    html += '</table></div></div>';
+  }
+  return html;
+}
+function kpi(v, l, warn) {
+  return '<div class="kpi' + (warn ? ' warn' : '') + '"><div class="v' + (warn ? ' warn' : '') + '">' + v + '</div><div class="l">' + l + '</div></div>';
+}
+
+/* ===================== RENDU : REGISTRE (cours & maisons) ===================== */
+function ownerSelectField(label, id, selectedId) {
+  var opts = state.proprietaires.map(function (p) {
+    return '<option value="' + p.id + '"' + (p.id === selectedId ? ' selected' : '') + '>' + esc(p.nom) + '</option>';
+  }).join('');
+  return '<div class="field"><label>' + label + '</label><select id="' + id + '">' + opts + '</select></div>';
+}
+function renderRegistre() {
+  var cours = scopedCours();
+  var html = '<div class="section-head"><h2>Cours &amp; maisons</h2>' +
+    (ui.addingCour ? '' : '<button class="btn btn-primary" onclick="showAddCour()">+ Nouvelle cour</button>') + '</div>';
+
+  if (ui.addingCour) {
+    var defaultOwner = ui.filterProprietaire !== 'all' ? ui.filterProprietaire : (state.proprietaires[0] && state.proprietaires[0].id);
+    html += '<div class="form-box"><h4 style="margin-bottom:10px;">Nouvelle cour</h4><div class="grid3">' +
+      field('Nom de la cour *', 'text', 'f-cour-nom', '', 'Ex : Cour Angré 8e Tranche') +
+      ownerSelectField('Propriétaire *', 'f-cour-proprietaire', defaultOwner) +
+      field('Localisation', 'text', 'f-cour-loc', '', 'Ex : Angré, Abidjan') +
+      '</div>' + fieldTextarea('Description (optionnel)', 'f-cour-desc', '') +
+      '<div class="form-actions"><button class="btn btn-primary" onclick="submitAddCour()">Enregistrer</button>' +
+      '<button class="btn btn-ghost" onclick="cancelAddCour()">Annuler</button></div></div>';
+  }
+
+  if (!cours.length && !ui.addingCour) {
+    html += '<div class="empty-hint">Aucune cour pour la sélection actuelle.</div>';
+  }
+
+  cours.forEach(function (c) { html += renderCour(c); });
+  return html;
+}
+
+function renderCour(c) {
+  var open = !!ui.openCours[c.id];
+  var nbMaisons = c.maisons.length;
+  var totalLoyer = c.maisons.reduce(function (s, m) { return s + (Number(m.loyer) || 0); }, 0);
+  var owner = findProprietaire(c.proprietaireId);
+  var ownerTag = (ui.filterProprietaire === 'all' && owner) ? ' &middot; ' + esc(owner.nom) : '';
+  var head = '<div class="cour-head" onclick="toggleCour(\'' + c.id + '\')">' +
+    '<div class="cour-title"><span class="chevron">' + (open ? '&#9662;' : '&#9656;') + '</span>' +
+    '<h3>' + esc(c.nom) + '</h3><span class="cour-loc">' + (c.localisation ? '&middot; ' + esc(c.localisation) : '') + ownerTag + '</span></div>' +
+    '<div class="cour-meta"><span>' + nbMaisons + ' maison' + (nbMaisons > 1 ? 's' : '') + '</span><span>' + fmtMoney(totalLoyer) + '/mois</span></div>' +
+    '</div>';
+
+  if (!open) return '<div class="cour-card">' + head + '</div>';
+
+  var body = '<div class="cour-body">';
+  if (ui.editingCour === c.id) {
+    body += '<div class="form-box"><div class="grid3">' +
+      field('Nom de la cour *', 'text', 'f-ecour-nom-' + c.id, c.nom) +
+      ownerSelectField('Propriétaire *', 'f-ecour-proprietaire-' + c.id, c.proprietaireId) +
+      field('Localisation', 'text', 'f-ecour-loc-' + c.id, c.localisation) + '</div>' +
+      fieldTextarea('Description', 'f-ecour-desc-' + c.id, c.description) +
+      '<div class="form-actions"><button class="btn btn-primary" onclick="submitEditCour(\'' + c.id + '\')">Enregistrer</button>' +
+      '<button class="btn btn-ghost" onclick="cancelEditCour()">Annuler</button></div></div>';
+  } else {
+    if (c.description) body += '<p style="color:var(--ink-soft);font-size:13.5px;margin:12px 0 4px;">' + esc(c.description) + '</p>';
+    body += '<div class="cour-actions" style="margin:12px 0;">' +
+      '<button class="btn btn-sm" onclick="event.stopPropagation();showAddMaison(\'' + c.id + '\')">+ Ajouter une maison</button>' +
+      '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();showEditCour(\'' + c.id + '\')">Modifier la cour</button>' +
+      '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteCour(\'' + c.id + '\')">Supprimer la cour</button>' +
+      '</div>';
+  }
+
+  if (ui.addingMaisonTo === c.id) body += renderAddMaisonForm(c.id);
+
+  if (!c.maisons.length && ui.addingMaisonTo !== c.id) {
+    body += '<div class="empty-hint">Aucune maison dans cette cour.</div>';
+  }
+  c.maisons.forEach(function (m) { body += renderMaison(c, m); });
+
+  body += renderReparationsBlock('generale', c.id, c.reparationsGenerales || [], 'Réparations générales de la cour');
+  body += '</div>';
+  return '<div class="cour-card">' + head + body + '</div>';
+}
+
+function renderAddMaisonForm(courId) {
+  return '<div class="form-box"><h4 style="margin-bottom:10px;">Nouvelle maison</h4><div class="grid3">' +
+    field('Nom / N&deg; maison *', 'text', 'f-maison-nom', '', 'Ex : Villa A') +
+    selectField('Type', 'f-maison-type', ['Villa', 'Appartement', 'Studio', 'Chambre', 'Local commercial']) +
+    field('Nombre de pièces', 'number', 'f-maison-pieces', '') +
+    field('Superficie (m²)', 'number', 'f-maison-superficie', '') +
+    field('Loyer mensuel (FCFA)', 'number', 'f-maison-loyer', '') +
+    field("Date d'entrée du locataire", 'date', 'f-maison-date', '') +
+    '</div>' +
+    field('Localisation / adresse précise', 'text', 'f-maison-adresse', '', 'Ex : Angré 8e Tranche, non loin de la pharmacie') +
+    '<div class="grid3">' + field('Locataire actuel', 'text', 'f-maison-locataire', '') + field('Téléphone locataire', 'text', 'f-maison-tel', '') +
+    field('ID Locataire', 'text', 'f-maison-locid', '', 'Laisser vide pour génération automatique') + '</div>' +
+    fieldTextarea('Équipements / caractéristiques', 'f-maison-equip', '', 'Ex : Douche, cuisine équipée, parking, groupe électrogène') +
+    '<div class="form-actions"><button class="btn btn-primary" onclick="submitAddMaison(\'' + courId + '\')">Enregistrer</button>' +
+    '<button class="btn btn-ghost" onclick="cancelAddMaison()">Annuler</button></div></div>';
+}
+
+function renderMaison(c, m) {
+  var open = !!ui.openMaisons[m.id];
+  var t = currentPeriode();
+  var pCour = (m.paiements || []).find(function (p) { return p.periode === t; });
+  var statusHtml = pCour ? statusBadge(pCour) : '<span class="badge badge-amber">Non facturé</span>';
+  var head = '<div class="maison-head" onclick="toggleMaison(\'' + m.id + '\')">' +
+    '<div><span class="chevron">' + (open ? '&#9662;' : '&#9656;') + '</span> <span class="maison-title">' + esc(m.nom) + '</span>' +
+    (m.type ? ' <span class="maison-sub">&middot; ' + esc(m.type) + '</span>' : '') +
+    (m.locataireNom ? ' <span class="maison-sub">&middot; ' + esc(m.locataireNom) + '</span>' : '') +
+    (m.locataireId ? ' <span class="maison-sub">&middot; ID ' + esc(m.locataireId) + '</span>' : '') + '</div>' +
+    '<div class="maison-summary"><span class="num">' + fmtMoney(m.loyer) + '/mois</span>' + statusHtml + '</div>' +
+    '</div>';
+
+  if (!open) return '<div class="maison-card">' + head + '</div>';
+
+  var body = '<div class="maison-body">';
+  if (ui.editingMaison === m.id) {
+    body += renderEditMaisonForm(m);
+  } else {
+    body += '<div class="grid3" style="margin-top:10px;">' +
+      infoLine('Type', m.type || '—') + infoLine('Pièces', m.pieces || '—') + infoLine('Superficie', m.superficie ? m.superficie + ' m²' : '—') +
+      infoLine('Loyer mensuel', fmtMoney(m.loyer)) + infoLine('Locataire', m.locataireNom || '—') + infoLine('Téléphone', m.locataireTel || '—') +
+      infoLine('Localisation', m.adresse || '—') + infoLine("Date d'entrée", m.dateEntree || '—') + infoLine('ID Locataire', m.locataireId || '—') +
+      infoLine('Équipements', m.equipements || '—') +
+      '</div>' +
+      '<div class="cour-actions" style="margin:12px 0;">' +
+      '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();showEditMaison(\'' + m.id + '\')">Modifier</button>' +
+      '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteMaison(\'' + m.id + '\')">Supprimer</button>' +
+      '</div>';
+  }
+
+  body += renderPaiementsBlock(m);
+  body += renderReparationsBlock('maison', m.id, m.reparations || [], 'Réparations de la maison');
+  body += '</div>';
+  return '<div class="maison-card">' + head + body + '</div>';
+}
+
+function renderEditMaisonForm(m) {
+  return '<div class="form-box"><div class="grid3">' +
+    field('Nom / N&deg; maison *', 'text', 'f-emaison-nom-' + m.id, m.nom) +
+    selectField('Type', 'f-emaison-type-' + m.id, ['Villa', 'Appartement', 'Studio', 'Chambre', 'Local commercial'], m.type) +
+    field('Nombre de pièces', 'number', 'f-emaison-pieces-' + m.id, m.pieces) +
+    field('Superficie (m²)', 'number', 'f-emaison-superficie-' + m.id, m.superficie) +
+    field('Loyer mensuel (FCFA)', 'number', 'f-emaison-loyer-' + m.id, m.loyer) +
+    field("Date d'entrée du locataire", 'date', 'f-emaison-date-' + m.id, m.dateEntree) +
+    '</div>' +
+    field('Localisation / adresse précise', 'text', 'f-emaison-adresse-' + m.id, m.adresse) +
+    '<div class="grid3">' + field('Locataire actuel', 'text', 'f-emaison-locataire-' + m.id, m.locataireNom) +
+    field('Téléphone locataire', 'text', 'f-emaison-tel-' + m.id, m.locataireTel) +
+    field('ID Locataire', 'text', 'f-emaison-locid-' + m.id, m.locataireId) + '</div>' +
+    fieldTextarea('Équipements / caractéristiques', 'f-emaison-equip-' + m.id, m.equipements) +
+    '<div class="form-actions"><button class="btn btn-primary" onclick="submitEditMaison(\'' + m.id + '\')">Enregistrer</button>' +
+    '<button class="btn btn-ghost" onclick="cancelEditMaison()">Annuler</button></div></div>';
+}
+
+function statusBadge(p) {
+  var du = Number(p.montantDu) || 0, paye = Number(p.montantPaye) || 0;
+  if (paye >= du && du > 0) return '<span class="badge badge-green">Payé</span>';
+  if (paye > 0) return '<span class="badge badge-amber">Partiel</span>';
+  return '<span class="badge badge-red">Impayé</span>';
+}
+
+/* ---- paiements ---- */
+function renderPaiementsBlock(m) {
+  var html = '<div class="subblock"><div class="subblock-head"><h4>Paiements de loyer</h4>' +
+    (ui.addingPaiementTo === m.id ? '' : '<button class="btn btn-sm" onclick="showAddPaiement(\'' + m.id + '\')">+ Ajouter un paiement</button>') + '</div>';
+
+  if (ui.addingPaiementTo === m.id) {
+    html += '<div class="form-box"><div class="grid3">' +
+      field('Mois concerné (AAAA-MM) *', 'month', 'f-pay-periode', currentPeriode()) +
+      field("Date d'échéance", 'date', 'f-pay-echeance', '') +
+      field('Date de paiement', 'date', 'f-pay-date', todayISO()) +
+      field('Montant dû (FCFA)', 'number', 'f-pay-du', m.loyer) +
+      field('Montant payé (FCFA)', 'number', 'f-pay-paye', m.loyer) +
+      selectField('Mode de paiement', 'f-pay-mode', ['Espèces', 'Mobile Money', 'Virement', 'Chèque']) +
+      '</div>' + field('Observation', 'text', 'f-pay-note', '') +
+      '<div class="form-actions"><button class="btn btn-primary" onclick="submitAddPaiement(\'' + m.id + '\')">Enregistrer</button>' +
+      '<button class="btn btn-ghost" onclick="cancelAddPaiement()">Annuler</button></div></div>';
+  }
+
+  var rows = (m.paiements || []).slice().sort(function (a, b) { return (b.periode || '').localeCompare(a.periode || ''); });
+  if (!rows.length) {
+    html += '<div class="empty-hint">Aucun paiement enregistré.</div></div>';
+    return html;
+  }
+  html += '<div class="table-wrap"><table><tr><th>Mois</th><th>Échéance</th><th>Payé le</th><th class="num">Dû</th><th class="num">Payé</th><th>Mode</th><th>Statut</th><th></th></tr>';
+  rows.forEach(function (p) {
+    html += '<tr><td>' + esc(monthLabel(p.periode)) + '</td><td>' + esc(p.dateEcheance || '—') + '</td><td>' + esc(p.datePaiement || '—') + '</td>' +
+      '<td class="num">' + fmtMoney(p.montantDu) + '</td><td class="num">' + fmtMoney(p.montantPaye) + '</td><td>' + esc(p.mode || '—') + '</td><td>' + statusBadge(p) + '</td>' +
+      '<td class="row-actions">' +
+      (p.montantPaye > 0 ? '<button class="btn btn-sm btn-ghost" onclick="openQuittance(\'' + m.id + '\',\'' + p.id + '\')">Quittance</button>' : '') +
+      '<button class="btn btn-sm btn-danger" onclick="deletePaiement(\'' + m.id + '\',\'' + p.id + '\')">&times;</button></td></tr>';
+  });
+  html += '</table></div></div>';
+  return html;
+}
+
+/* ---- réparations (générale ou par maison) ---- */
+function renderReparationsBlock(scope, ownerId, list, title) {
+  var isAdding = ui.addingReparationTo && ui.addingReparationTo.scope === scope && ui.addingReparationTo.id === ownerId;
+  var html = '<div class="subblock"><div class="subblock-head"><h4>' + title + '</h4>' +
+    (isAdding ? '' : '<button class="btn btn-sm" onclick="showAddReparation(\'' + scope + '\',\'' + ownerId + '\')">+ Ajouter une réparation</button>') + '</div>';
+
+  if (isAdding) {
+    html += '<div class="form-box"><div class="grid3">' +
+      field('Date', 'date', 'f-rep-date', todayISO()) +
+      field('Montant (FCFA)', 'number', 'f-rep-montant', '') +
+      selectField('Statut', 'f-rep-statut', ['À prévoir', 'En cours', 'Terminée']) +
+      '</div>' +
+      fieldTextarea('Description des travaux *', 'f-rep-desc', '', 'Ex : Réfection de la toiture') +
+      field('Prestataire', 'text', 'f-rep-prestataire', '') +
+      '<div class="form-actions"><button class="btn btn-primary" onclick="submitAddReparation(\'' + scope + '\',\'' + ownerId + '\')">Enregistrer</button>' +
+      '<button class="btn btn-ghost" onclick="cancelAddReparation()">Annuler</button></div></div>';
+  }
+
+  if (!list.length) {
+    html += '<div class="empty-hint">Aucune réparation enregistrée.</div></div>';
+    return html;
+  }
+  var sorted = list.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
+  html += '<div class="table-wrap"><table><tr><th>Date</th><th>Description</th><th class="num">Montant</th><th>Prestataire</th><th>Statut</th><th></th></tr>';
+  sorted.forEach(function (r) {
+    var badgeClass = r.statut === 'Terminée' ? 'badge-green' : (r.statut === 'En cours' ? 'badge-amber' : 'badge-red');
+    html += '<tr><td>' + esc(r.date || '—') + '</td><td>' + esc(r.description) + '</td><td class="num">' + fmtMoney(r.montant) + '</td>' +
+      '<td>' + esc(r.prestataire || '—') + '</td><td><span class="badge ' + badgeClass + '">' + esc(r.statut) + '</span></td>' +
+      '<td class="row-actions"><button class="btn btn-sm btn-danger" onclick="deleteReparation(\'' + scope + '\',\'' + ownerId + '\',\'' + r.id + '\')">&times;</button></td></tr>';
+  });
+  html += '</table></div></div>';
+  return html;
+}
+
+/* ===================== RENDU : QUITTANCES (liste) ===================== */
+function renderQuittancesTab() {
+  var rows = [];
+  scopedCours().forEach(function (c) {
+    c.maisons.forEach(function (m) {
+      (m.paiements || []).forEach(function (p) {
+        if (Number(p.montantPaye) > 0) rows.push({ cour: c, maison: m, p: p });
+      });
+    });
+  });
+  var html = '<div class="section-head"><h2>Quittances</h2></div>';
+
+  html += '<div class="form-box"><h4 style="margin-bottom:10px;">Remplissage rapide</h4>' +
+    '<p style="color:var(--ink-soft);font-size:13px;margin:0 0 10px;">Indiquez l\'ID du locataire et le mois concerné : la quittance est retrouvée ou générée automatiquement.</p>' +
+    '<div class="grid3">' +
+    field('ID Locataire *', 'text', 'f-quick-locid', '', 'Ex : LOC-001') +
+    field('Mois de paiement *', 'month', 'f-quick-mois', currentPeriode()) +
+    '</div>' +
+    (ui.quickFillError ? '<div style="color:var(--red);font-size:13px;margin-top:4px;">' + esc(ui.quickFillError) + '</div>' : '') +
+    '<div class="form-actions"><button class="btn btn-primary" onclick="quickFillQuittance()">Remplir la quittance</button></div>' +
+    '<p style="color:var(--ink-faint);font-size:12px;margin:10px 0 0;">L\'ID Locataire de chaque maison est visible dans l\'onglet « Cours &amp; maisons ».</p>' +
+    '</div>';
+
+  if (!rows.length) {
+    html += '<div class="empty-hint" style="margin-top:16px;">Aucun paiement encaissé pour le moment. Les quittances apparaîtront ici dès qu\'un loyer sera enregistré comme payé.</div>';
+    return html;
+  }
+  rows.sort(function (a, b) { return (b.p.periode || '').localeCompare(a.p.periode || ''); });
+  html += '<div class="section-head" style="margin-top:24px;"><h3>Historique des quittances</h3></div>';
+  html += '<div class="table-wrap"><table><tr><th>N&deg;</th><th>Mois</th><th>Cour</th><th>Maison</th><th>Locataire</th><th class="num">Montant</th><th></th></tr>';
+  rows.forEach(function (r) {
+    html += '<tr><td>' + esc(r.p.numeroQuittance || '—') + '</td><td>' + esc(monthLabel(r.p.periode)) + '</td>' +
+      '<td>' + esc(r.cour.nom) + '</td><td>' + esc(r.maison.nom) + '</td><td>' + esc(r.maison.locataireNom || '—') + '</td>' +
+      '<td class="num">' + fmtMoney(r.p.montantPaye) + '</td>' +
+      '<td class="row-actions"><button class="btn btn-sm" onclick="openQuittance(\'' + r.maison.id + '\',\'' + r.p.id + '\')">Voir / imprimer</button></td></tr>';
+  });
+  html += '</table></div>';
+  return html;
+}
+
+/* ===================== RENDU : MODALE QUITTANCE ===================== */
+function renderQuittanceModal() {
+  if (!ui.printing) return '';
+  var found = findMaison(ui.printing.maisonId);
+  if (!found) return '';
+  var p = found.maison.paiements.find(function (x) { return x.id === ui.printing.payId; });
+  if (!p) return '';
+  var m = found.maison, c = found.cour;
+  var owner = findProprietaire(c.proprietaireId) || { nom: '', telephone: '' };
+  var montantMots = numberToFrenchWords(p.montantPaye) + ' francs CFA';
+  return '' +
+    '<div class="overlay print-target" onclick="if(event.target===this)closeQuittance()">' +
+      '<div class="modal">' +
+        '<div class="modal-head no-print"><strong>Quittance ' + esc(p.numeroQuittance || '') + '</strong>' +
+          '<button class="btn btn-sm btn-ghost" onclick="closeQuittance()">Fermer &times;</button></div>' +
+        '<div class="modal-body">' +
+          '<div class="receipt">' +
+            '<h2>Quittance de loyer</h2>' +
+            '<div class="rnum">N&deg; ' + esc(p.numeroQuittance || '') + '</div>' +
+            '<table>' +
+              recRow('Bailleur', owner.nom || '—') +
+              recRow('Téléphone bailleur', owner.telephone || '—') +
+              recRow('Cour', c.nom) +
+              recRow('Maison', m.nom + (m.adresse ? ' — ' + m.adresse : '')) +
+              recRow('Locataire', m.locataireNom || '—') +
+              recRow('Période concernée', monthLabel(p.periode)) +
+              recRow('Mode de paiement', p.mode || '—') +
+              recRow('Date de paiement', p.datePaiement || '—') +
+            '</table>' +
+            '<div class="amount-box"><div>Montant reçu</div><div class="big num">' + fmtMoney(p.montantPaye) + '</div>' +
+              '<div style="font-size:12.5px;color:#657064;margin-top:4px;">Arrêtée la présente quittance à la somme de : ' + montantMots + '.</div></div>' +
+            '<div class="sigs"><div>Signature du bailleur</div><div>Signature du locataire</div></div>' +
+          '</div>' +
+          '<div class="form-actions no-print"><button class="btn btn-primary" onclick="doPrint()">Imprimer / Enregistrer en PDF</button>' +
+          '<button class="btn btn-ghost" onclick="closeQuittance()">Fermer</button></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+function recRow(label, value) { return '<tr><td class="rl">' + esc(label) + '</td><td>' + esc(value) + '</td></tr>'; }
+
+/* ===================== PETITS HELPERS DE FORMULAIRE ===================== */
+function field(label, type, id, value, placeholder) {
+  return '<div class="field"><label>' + label + '</label><input type="' + type + '" id="' + id + '" value="' + esc(value == null ? '' : value) + '"' +
+    (placeholder ? ' placeholder="' + esc(placeholder) + '"' : '') + '></div>';
+}
+function fieldTextarea(label, id, value, placeholder) {
+  return '<div class="field"><label>' + label + '</label><textarea id="' + id + '"' + (placeholder ? ' placeholder="' + esc(placeholder) + '"' : '') + '>' + esc(value || '') + '</textarea></div>';
+}
+function selectField(label, id, options, current) {
+  var opts = options.map(function (o) { return '<option value="' + esc(o) + '"' + (o === current ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
+  return '<div class="field"><label>' + label + '</label><select id="' + id + '"><option value="">—</option>' + opts + '</select></div>';
+}
+function infoLine(label, value) {
+  return '<div><div style="font-size:11.5px;color:var(--ink-soft);">' + esc(label) + '</div><div style="font-size:13.5px;">' + esc(value) + '</div></div>';
+}
+
+/* ===================== RENDU PRINCIPAL ===================== */
+function render() {
+  var flag = ui.savedFlag;
+  ui.savedFlag = '';
+  var content = '';
+  if (ui.tab === 'dashboard') content = renderDashboard();
+  else if (ui.tab === 'proprietaires') content = renderProprietaires();
+  else if (ui.tab === 'registre') content = renderRegistre();
+  else content = renderQuittancesTab();
+
+  var html = renderTopbar() + '<div class="section">' + content + '</div>';
+  if (flag) html += '<div class="save-flag no-print">' + esc(flag) + '</div>';
+  html += '<footer class="hint no-print">Registre Immobilier &middot; ' +
+    (IN_CLAUDE ? 'données propres à cet artefact' : 'données enregistrées localement dans ce navigateur') + '</footer>';
+  html += renderQuittanceModal();
+
+  document.getElementById('app').innerHTML = html;
+  if (ui.printing) document.body.classList.add('print-mode');
+  else document.body.classList.remove('print-mode');
+}
+
+/* ===================== DÉMARRAGE ===================== */
+render();
+
+</script>
+</body>
+</html>
