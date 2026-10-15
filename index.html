@@ -489,7 +489,7 @@ function renderAcces() {
     } else {
       act = (self ? '' : '<button class="btn btn-sm" onclick="showReset(\'' + u.id + '\')">Réinitialiser le mot de passe</button> <button class="btn btn-sm btn-danger" onclick="askDeleteUser(\'' + u.id + '\')">Supprimer</button>');
     }
-    html += '<tr><td>' + esc(u.nom) + '</td><td>' + esc(u.login) + '</td><td>' + roleCell + '</td><td class="row-actions">' + act + '</td></tr>';
+    html += '<tr><td>' + esc(u.nom) + '</td><td>' + esc(u.login) + '</td><td>' + roleCell + '</td><td style="text-align:right;white-space:nowrap;">' + act + '</td></tr>';
   });
   html += '</table></div>';
   html += '<p style="color:var(--ink-faint);font-size:12px;margin-top:12px;">Administrateur : tout, y compris les comptes. Gestionnaire : consulte et modifie les données. Lecture seule : consulte, imprime et exporte, sans rien enregistrer. La session se ferme après 15 minutes d\'inactivité.</p>';
@@ -502,7 +502,7 @@ function userBar() {
 }
 function applyReadOnly() {
   if (!isReadOnly()) return;
-  var rx = /^(showAdd|showEdit|submit|delete|dup|edit|start|quickFill)/i;
+  var rx = /(^|[;\s])(showAdd|showEdit|submit|delete|dup|edit|start|quickFill)/i;
   Array.prototype.forEach.call(document.querySelectorAll('#app [onclick]'), function (el) {
     if (rx.test(el.getAttribute('onclick') || '')) el.parentNode && el.parentNode.removeChild(el);
   });
@@ -1436,14 +1436,17 @@ async function emitRelances(list, filename) {
   var ok = await saveBlob(filename, doc.output('blob'));
   if (ok) logRelances(list);
 }
-function logRelances(list) {
+function logRelances(list, canal) {
+  canal = canal || '';
   var today = todayISO();
   list.forEach(function (r) {
     if (!r.maison.relances) r.maison.relances = [];
     var lst = r.maison.relances[r.maison.relances.length - 1];
-    if (lst && lst.date === today && lst.total === r.total && lst.niveau === r.niveau) return;
-    r.maison.relances.push({ date: today, niveau: r.niveau, total: r.total,
-      periodes: r.mois.map(function (x) { return x.periode; }) });
+    if (lst && lst.date === today && lst.total === r.total && lst.niveau === r.niveau && (lst.canal || '') === canal) return;
+    var ent = { date: today, niveau: r.niveau, total: r.total,
+      periodes: r.mois.map(function (x) { return x.periode; }) };
+    if (canal) ent.canal = canal;
+    r.maison.relances.push(ent);
   });
   save();
 }
@@ -1508,6 +1511,7 @@ function renderRelances() {
     '<div class="field"><label>Loyer payable au plus tard</label><select onchange="setParam(\'jourEcheance\',this.value)">' + jours + '</select></div>' +
     '<div class="field"><label>Ton des courriers</label><select onchange="setParam(\'ton\',this.value)">' + tonOpts + '</select></div>' +
     '<div class="field"><label>Lieu de rédaction</label><input type="text" value="' + esc(p.lieu || 'Abidjan') + '" onchange="setParam(\'lieu\',this.value.trim()||\'Abidjan\')"></div>' +
+    '<div class="field"><label>Indicatif pays (WhatsApp)</label><input type="text" value="' + esc(p.indicatif || '225') + '" onchange="setParam(\'indicatif\',this.value.replace(/\\D/g,\'\')||\'225\')"></div>' +
     '</div>' +
     '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13px;color:var(--ink-soft);">' +
     '<input type="checkbox" style="margin-top:3px;"' + (p.compterNonEnregistres === false ? '' : ' checked') + ' onchange="setParamBool(\'compterNonEnregistres\',this.checked)">' +
@@ -1526,6 +1530,7 @@ function renderRelances() {
   html += '<div class="section-head" style="margin-top:20px;"><h3>Locataires en retard</h3><div class="cour-actions">' +
     '<button class="btn btn-sm btn-ghost" onclick="setRelanceAll(true)">Tout cocher</button>' +
     '<button class="btn btn-sm btn-ghost" onclick="setRelanceAll(false)">Tout décocher</button>' +
+    '<button class="btn btn-sm"' + (nbSel ? '' : ' disabled') + ' onclick="openWaQueue()">&#128172; WhatsApp aux cochés</button>' +
     '<button class="btn btn-sm btn-primary"' + (nbSel ? '' : ' disabled') + ' onclick="downloadRelancesSelection()">PDF des ' + nbSel + ' lettre' + (nbSel > 1 ? 's' : '') + ' cochée' + (nbSel > 1 ? 's' : '') + '</button></div></div>';
   html += '<div class="table-wrap"><table><tr><th></th><th>Locataire</th><th>Cour / maison</th><th>Mois impayés</th><th class="num">Nb</th><th class="num">Total dû</th><th class="num">Retard max</th><th>Ton</th><th>Dernière relance</th><th></th></tr>';
   list.forEach(function (r) {
@@ -1537,8 +1542,9 @@ function renderRelances() {
       '<td>' + moisSummary(r.mois) + '</td><td class="num">' + r.mois.length + '</td>' +
       '<td class="num" style="color:var(--red);font-weight:600;">' + fmtMoney(r.total) + '</td>' +
       '<td class="num">' + r.maxJours + ' j</td><td>' + niveauBadge(r.niveau) + '</td>' +
-      '<td>' + (r.derniere ? esc(fmtDateFR(r.derniere.date)) : '<span style="color:var(--ink-faint);">jamais</span>') + '</td>' +
+      '<td>' + (r.derniere ? esc(fmtDateFR(r.derniere.date)) + (r.derniere.canal === 'whatsapp' ? ' <span class="maison-sub">(WhatsApp)</span>' : '') : '<span style="color:var(--ink-faint);">jamais</span>') + '</td>' +
       '<td class="row-actions"><button class="btn btn-sm btn-ghost" onclick="showRelancePreview(\'' + m.id + '\')">Aperçu</button>' +
+      '<button class="btn btn-sm" onclick="openWa(\'relance\',\'' + m.id + '\')">WhatsApp</button>' +
       '<button class="btn btn-sm" onclick="downloadRelance(\'' + m.id + '\')">PDF</button></td></tr>';
   });
   html += '</table></div>';
@@ -1566,6 +1572,7 @@ function renderRelanceModal() {
     '<p>' + esc(L.note) + '</p>' + (L.contact ? '<p>' + esc(L.contact) + '</p>' : '') +
     '<p>' + esc(L.formule) + '</p><p>Le bailleur,<br><br><strong>' + esc(L.signataire) + '</strong></p></div>' +
     '<div class="form-actions"><button class="btn btn-primary" onclick="downloadRelance(\'' + r.maison.id + '\')">Télécharger en PDF</button>' +
+    '<button class="btn" onclick="openWa(\'relance\',\'' + r.maison.id + '\')">Envoyer par WhatsApp</button>' +
     '<button class="btn btn-ghost" onclick="closeRelancePreview()">Fermer</button></div></div></div></div>';
 }
 
@@ -1907,6 +1914,284 @@ function renderEtats() {
   });
   e.notes.forEach(function (n) { html += '<p style="color:var(--ink-faint);font-size:12px;margin-top:12px;">' + esc(n) + '</p>'; });
   return html;
+}
+
+/* ===================== WHATSAPP : QUITTANCES ET RELANCES ===================== */
+/* WhatsApp n'autorise pas l'envoi automatique depuis une page web : l'application prépare le
+   message (et le PDF) et ouvre la conversation du locataire ; l'utilisateur appuie sur « Envoyer ». */
+function waIndicatif() {
+  var d = String((state.parametres && state.parametres.indicatif) || '225').replace(/\D/g, '');
+  return d || '225';
+}
+/* Numéro au format international sans « + » (ex. 2250707405028), ou '' si inutilisable. */
+function waNumber(tel) {
+  var raw = String(tel || '').trim();
+  var plus = raw.charAt(0) === '+';
+  var d = raw.replace(/\D/g, '');
+  if (!d) return '';
+  if (d.indexOf('00') === 0) { d = d.slice(2); plus = true; }
+  var ind = waIndicatif();
+  if (plus) return d.length >= 9 ? d : '';
+  if (d.indexOf(ind) === 0 && d.length >= ind.length + 8) return d;
+  if (d.length >= 8 && d.length <= 10) return ind + d;
+  return d.length > 10 ? d : '';
+}
+function waNumberLabel(tel) {
+  var n = waNumber(tel);
+  return n ? '+' + n : '';
+}
+function waOpenUrl(num, text) {
+  var url = 'https://wa.me/' + num + '?text=' + encodeURIComponent(text);
+  var w = null;
+  try { w = window.open(url, '_blank'); } catch (e) { w = null; }
+  if (!w) {
+    var a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+}
+
+/* ----- Messages ----- */
+function waNomLocataire(m) { return m.locataireNom ? m.locataireNom : 'Locataire'; }
+function waMessageRelance(r) {
+  var L = buildRelanceContent(r), m = r.maison, c = r.cour;
+  var owner = r.owner || {};
+  var lines = [];
+  lines.push('Bonjour ' + waNomLocataire(m) + ',');
+  lines.push('');
+  var logement = (m.type ? m.type + ' ' : '') + m.nom + ' - ' + c.nom;
+  if (L.niveau === 1) lines.push('Sauf erreur de notre part, le loyer de votre logement (' + logement + ') reste impayé :');
+  else if (L.niveau === 2) lines.push('Plusieurs loyers de votre logement (' + logement + ') restent impayés :');
+  else lines.push('Nous constatons un retard important de paiement pour votre logement (' + logement + ') : ' + L.lignes.length + ' mois impayés.');
+  lines.push('');
+  var l = L.lignes;
+  if (l.length <= 6) {
+    l.forEach(function (x) { lines.push('• ' + x.mois + ' : ' + fmtNum(x.reste) + ' FCFA'); });
+  } else {
+    lines.push('• De ' + l[0].mois + ' à ' + l[l.length - 1].mois + ' (' + l.length + ' mois)');
+  }
+  lines.push('');
+  lines.push('*Total à régler : ' + fmtNum(L.total) + ' FCFA* au plus tard le ' + fmtDateLong(L.delai) + '.');
+  if (L.avert) { lines.push(''); lines.push(L.avert); }
+  lines.push('');
+  lines.push('Si vous avez déjà payé, merci de nous envoyer votre preuve de paiement.');
+  if (owner.telephone) lines.push('Contact : ' + owner.telephone);
+  lines.push('');
+  lines.push('Cordialement,');
+  lines.push(owner.nom || 'Le bailleur');
+  return lines.join('\n');
+}
+function waMessageQuittance(found, p) {
+  var m = found.maison, c = found.cour;
+  var owner = findProprietaire(c.proprietaireId) || { nom: '', telephone: '' };
+  var lines = [];
+  lines.push('Bonjour ' + waNomLocataire(m) + ',');
+  lines.push('');
+  lines.push('Voici votre *quittance de loyer* n° ' + (p.numeroQuittance || '') + ' :');
+  lines.push('• Logement : ' + (m.type ? m.type + ' ' : '') + m.nom + ' - ' + c.nom);
+  lines.push('• Période : ' + monthLabel(p.periode));
+  lines.push('• Montant reçu : *' + fmtNum(p.montantPaye) + ' FCFA* (' + numberToFrenchWords(p.montantPaye).toLowerCase() + ' francs CFA)');
+  if (p.datePaiement) lines.push('• Payé le : ' + fmtDateFR(p.datePaiement) + (p.mode ? ' (' + p.mode + ')' : ''));
+  if (p.montantDu && p.montantPaye < p.montantDu) lines.push('• Reste à payer pour ce mois : ' + fmtNum(p.montantDu - p.montantPaye) + ' FCFA');
+  lines.push('');
+  lines.push('Merci de votre paiement.');
+  lines.push('');
+  lines.push('Cordialement,');
+  lines.push(owner.nom || 'Le bailleur');
+  return lines.join('\n');
+}
+
+/* ----- PDF de la quittance ----- */
+function buildQuittancePdf(found, p) {
+  if (!window.jspdf || !window.jspdf.jsPDF) return null;
+  var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  var m = found.maison, c = found.cour;
+  var owner = findProprietaire(c.proprietaireId) || { nom: '', telephone: '' };
+  var ML = 20, W = 170, y = 24;
+  doc.setTextColor(38, 49, 44);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(20);
+  doc.text('Quittance de loyer', ML, y, { baseline: 'top' });
+  y += 11;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(101, 112, 100);
+  doc.text('N° ' + pdfSafe(p.numeroQuittance || ''), ML, y, { baseline: 'top' });
+  y += 8;
+  doc.setDrawColor(140, 106, 34); doc.setLineWidth(0.7); doc.line(ML, y, ML + W, y);
+  y += 10;
+  var rows = [
+    ['Bailleur', owner.nom || '-'], ['Téléphone bailleur', owner.telephone || '-'], ['Cour', c.nom],
+    ['Maison', m.nom + (m.adresse ? ' - ' + m.adresse : '')], ['Locataire', m.locataireNom || '-'],
+    ['Période concernée', monthLabel(p.periode)], ['Mode de paiement', p.mode || '-'],
+    ['Date de paiement', p.datePaiement ? fmtDateFR(p.datePaiement) : '-']
+  ];
+  rows.forEach(function (r) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(101, 112, 100);
+    doc.text(pdfSafe(r[0]), ML, y, { baseline: 'top' });
+    doc.setTextColor(38, 49, 44);
+    doc.text(doc.splitTextToSize(pdfSafe(r[1]), 100), ML + 62, y, { baseline: 'top' });
+    y += 8;
+  });
+  y += 6;
+  doc.setFillColor(241, 233, 206); doc.setDrawColor(215, 207, 174); doc.rect(ML, y, W, 30, 'FD');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(101, 112, 100);
+  doc.text('Montant reçu', ML + 5, y + 5, { baseline: 'top' });
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(38, 49, 44);
+  doc.text(pdfSafe(fmtNum(p.montantPaye) + ' FCFA'), ML + 5, y + 11, { baseline: 'top' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(101, 112, 100);
+  doc.text(doc.splitTextToSize(pdfSafe('Arrêtée la présente quittance à la somme de : ' + numberToFrenchWords(p.montantPaye) + ' francs CFA.'), W - 10), ML + 5, y + 21, { baseline: 'top' });
+  y += 52;
+  doc.setFontSize(10); doc.setTextColor(101, 112, 100);
+  doc.text('Signature du bailleur', ML + 20, y + 14, { baseline: 'top' });
+  doc.text('Signature du locataire', ML + W - 60, y + 14, { baseline: 'top' });
+  doc.setDrawColor(150, 150, 150); doc.setLineWidth(0.3);
+  doc.line(ML, y + 12, ML + 70, y + 12); doc.line(ML + W - 70, y + 12, ML + W, y + 12);
+  return doc;
+}
+
+/* ----- Boîte de dialogue d'envoi ----- */
+function ensureQuittanceNumber(p) {
+  if (!p.numeroQuittance) {
+    var year = (p.datePaiement || todayISO()).slice(0, 4);
+    p.numeroQuittance = 'QT-' + year + '-' + String(state.nextIds.paiement).padStart(3, '0') + '-' + p.id.split('-')[1];
+  }
+}
+function openWa(kind, maisonId, payId) {
+  var text, m;
+  if (kind === 'relance') {
+    var r = relanceByMaison(maisonId);
+    if (!r) { alert('Aucun loyer en retard pour cette maison.'); return; }
+    m = r.maison; text = waMessageRelance(r);
+  } else {
+    var found = findMaison(maisonId); if (!found) return;
+    var p = found.maison.paiements.filter(function (x) { return x.id === payId; })[0]; if (!p) return;
+    ensureQuittanceNumber(p);
+    m = found.maison; text = waMessageQuittance(found, p);
+  }
+  ui.wa = { kind: kind, maisonId: maisonId, payId: payId || null, text: text };
+  ui.waQueue = false;
+  ui.relancePreview = null; ui.printing = null;
+  persistUi(); render();
+}
+function closeWa() { ui.wa = null; persistUi(); render(); }
+function waSyncTel(m) {
+  var t = gv('wa-tel').trim();
+  if (t && t !== m.locataireTel) { m.locataireTel = t; return true; }
+  return false;
+}
+function waMarkSent(kind, m, payId, fromPdf) {
+  var today = todayISO();
+  if (kind === 'relance') {
+    var r = relanceByMaison(m.id);
+    if (r) logRelances([r], 'whatsapp');
+  } else {
+    var p = m.paiements.filter(function (x) { return x.id === payId; })[0];
+    if (p) { p.envoiWhatsApp = today; save(); }
+  }
+  ui.waSent = ui.waSent || {};
+  ui.waSent[m.id + (payId ? ':' + payId : '')] = true;
+}
+function waGo() {
+  var w = ui.wa; if (!w) return;
+  var found = findMaison(w.maisonId); if (!found) return;
+  var m = found.maison;
+  var num = waNumber(gv('wa-tel'));
+  if (!num) { alert('Numéro WhatsApp manquant ou invalide. Saisissez-le avec ou sans l\'indicatif (ex. 07 07 40 50 28 ou +225 07 07 40 50 28).'); return; }
+  var text = gv('wa-text');
+  waSyncTel(m);
+  waOpenUrl(num, text);
+  waMarkSent(w.kind, m, w.payId);
+  ui.wa = null; persistUi(); save();
+}
+async function waPdf() {
+  var w = ui.wa; if (!w) return;
+  var found = findMaison(w.maisonId); if (!found) return;
+  var m = found.maison, doc, name;
+  if (w.kind === 'relance') {
+    var r = relanceByMaison(w.maisonId); if (!r) return;
+    doc = buildRelancesPdf([r]);
+    name = 'Relance_' + slugify(m.locataireNom || m.locataireId) + '_' + todayISO() + '.pdf';
+  } else {
+    var p = m.paiements.filter(function (x) { return x.id === w.payId; })[0]; if (!p) return;
+    doc = buildQuittancePdf(found, p);
+    name = 'Quittance_' + slugify(m.locataireNom || m.locataireId) + '_' + (p.periode || '') + '.pdf';
+  }
+  if (!doc) { alert('Le générateur PDF n\'a pas pu se charger. Vérifiez la connexion internet puis réessayez.'); return; }
+  var blob = doc.output('blob');
+  var text = gv('wa-text');
+  try {
+    var file = new File([blob], name, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], text: text });
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+  }
+  await saveBlob(name, blob);
+  alert('Le PDF a été téléchargé. Ouvrez la conversation WhatsApp du locataire (bouton « Ouvrir WhatsApp ») puis joignez le fichier avec le trombone.');
+}
+async function waCopy() {
+  var t = gv('wa-text');
+  try { await navigator.clipboard.writeText(t); ui.savedFlag = 'Message copié.'; }
+  catch (e) { var ta = document.getElementById('wa-text'); if (ta) { ta.select(); try { document.execCommand('copy'); ui.savedFlag = 'Message copié.'; } catch (e2) {} } }
+  render();
+}
+
+/* ----- Envoi guidé à plusieurs locataires ----- */
+function openWaQueue() {
+  var list = computeRelances().filter(function (r) { return ui.relanceSel[r.maison.id] !== false; });
+  if (!list.length) { alert('Aucune relance cochée.'); return; }
+  ui.waQueue = true; ui.wa = null; ui.waSent = {};
+  persistUi(); render();
+}
+function closeWaQueue() { ui.waQueue = false; persistUi(); render(); }
+function waQuick(maisonId) {
+  var r = relanceByMaison(maisonId); if (!r) return;
+  var num = waNumber(r.maison.locataireTel);
+  if (!num) { alert('Numéro manquant pour ' + waNomLocataire(r.maison) + '. Utilisez le bouton « WhatsApp » de la ligne pour le saisir.'); return; }
+  waOpenUrl(num, waMessageRelance(r));
+  waMarkSent('relance', r.maison, null);
+  render();
+}
+function renderWaQueueModal() {
+  if (!ui.waQueue) return '';
+  var list = computeRelances().filter(function (r) { return ui.relanceSel[r.maison.id] !== false; });
+  var sent = ui.waSent || {};
+  var rows = list.map(function (r) {
+    var m = r.maison, lab = waNumberLabel(m.locataireTel), done = sent[m.id];
+    return '<tr><td>' + esc(waNomLocataire(m)) + '<div class="maison-sub">' + esc(r.cour.nom) + ' &middot; ' + esc(m.nom) + '</div></td>' +
+      '<td>' + (lab ? esc(lab) : '<span style="color:var(--red);">Numéro manquant</span>') + '</td>' +
+      '<td class="num">' + fmtMoney(r.total) + '</td>' +
+      '<td style="text-align:right;white-space:nowrap;">' + (done ? '<span class="badge badge-green">Ouvert &#10003;</span> ' : '') +
+      '<button class="btn btn-sm' + (done ? '' : ' btn-primary') + '" onclick="waQuick(\'' + m.id + '\')"' + (lab ? '' : ' disabled') + '>' + (done ? 'Rouvrir' : 'Ouvrir WhatsApp') + '</button> ' +
+      '<button class="btn btn-sm btn-ghost" onclick="openWa(\'relance\',\'' + m.id + '\')">Modifier</button></td></tr>';
+  }).join('');
+  return '<div class="overlay" onclick="if(event.target===this)closeWaQueue()"><div class="modal" style="max-width:760px;">' +
+    '<div class="modal-head"><strong>Envoi des relances par WhatsApp</strong><button class="btn btn-sm btn-ghost" onclick="closeWaQueue()">Fermer &times;</button></div>' +
+    '<div class="modal-body"><p style="font-size:13px;color:var(--ink-soft);margin:0 0 12px;">Touchez « Ouvrir WhatsApp » pour chaque locataire : la conversation s\'ouvre avec le message prêt, il ne reste qu\'à appuyer sur « Envoyer ». WhatsApp ne permet pas l\'envoi sans cette dernière validation.</p>' +
+    '<div class="table-wrap"><table><tr><th>Locataire</th><th>Numéro</th><th class="num">Total dû</th><th></th></tr>' + rows + '</table></div>' +
+    '<div class="form-actions"><button class="btn btn-ghost" onclick="closeWaQueue()">Terminer</button></div></div></div></div>';
+}
+function renderWaModal() {
+  if (ui.waQueue) return renderWaQueueModal();
+  if (!ui.wa) return '';
+  var w = ui.wa, found = findMaison(w.maisonId);
+  if (!found) return '';
+  var m = found.maison;
+  var titre = w.kind === 'relance' ? 'Relance par WhatsApp' : 'Quittance par WhatsApp';
+  var dejaP = w.kind === 'quittance' ? m.paiements.filter(function (x) { return x.id === w.payId; })[0] : null;
+  var deja = dejaP && dejaP.envoiWhatsApp ? '<div class="badge badge-amber" style="margin-bottom:10px;">Déjà ouverte dans WhatsApp le ' + esc(fmtDateFR(dejaP.envoiWhatsApp)) + '</div>' : '';
+  var lab = waNumberLabel(m.locataireTel);
+  return '<div class="overlay" onclick="if(event.target===this)closeWa()"><div class="modal" style="max-width:640px;">' +
+    '<div class="modal-head"><strong>' + titre + '</strong><button class="btn btn-sm btn-ghost" onclick="closeWa()">Fermer &times;</button></div>' +
+    '<div class="modal-body">' + deja +
+    '<div class="grid2"><div class="field"><label>Locataire</label><input type="text" value="' + esc(waNomLocataire(m)) + '" disabled></div>' +
+    '<div class="field"><label>Numéro WhatsApp' + (lab ? ' (envoi à ' + esc(lab) + ')' : '') + '</label><input type="tel" id="wa-tel" value="' + esc(m.locataireTel || '') + '" placeholder="07 07 40 50 28"></div></div>' +
+    '<div class="field" style="margin-top:10px;"><label>Message (modifiable)</label><textarea id="wa-text" rows="13" style="min-height:220px;">' + esc(w.text) + '</textarea></div>' +
+    '<div class="form-actions" style="flex-wrap:wrap;"><button class="btn btn-primary" onclick="waGo()">Ouvrir WhatsApp</button>' +
+    '<button class="btn" onclick="waPdf()">Joindre le PDF</button><button class="btn btn-ghost" onclick="waCopy()">Copier le message</button>' +
+    '<button class="btn btn-ghost" onclick="closeWa()">Annuler</button></div>' +
+    '<p style="color:var(--ink-faint);font-size:12px;margin:12px 0 0;">« Ouvrir WhatsApp » ouvre la conversation avec le message prêt : appuyez sur Envoyer. Pour le PDF : sur téléphone, « Joindre le PDF » ouvre le partage (choisissez WhatsApp puis le locataire) ; sur ordinateur, le fichier est téléchargé et se joint avec le trombone.</p>' +
+    '</div></div></div>';
 }
 
 /* ===================== RENDU : TOPBAR ===================== */
@@ -2273,7 +2558,7 @@ function renderPaiementsBlock(m) {
     html += '<tr><td>' + esc(monthLabel(p.periode)) + '</td><td>' + esc(p.dateEcheance || '—') + '</td><td>' + esc(p.datePaiement || '—') + '</td>' +
       '<td class="num">' + fmtMoney(p.montantDu) + '</td><td class="num">' + fmtMoney(p.montantPaye) + '</td><td>' + esc(p.mode || '—') + '</td><td>' + statusBadge(p) + '</td>' +
       '<td class="row-actions">' +
-      (p.montantPaye > 0 ? '<button class="btn btn-sm btn-ghost" onclick="openQuittance(\'' + m.id + '\',\'' + p.id + '\')">Quittance</button>' : '') +
+      (p.montantPaye > 0 ? '<button class="btn btn-sm btn-ghost" onclick="openQuittance(\'' + m.id + '\',\'' + p.id + '\')">Quittance</button><button class="btn btn-sm btn-ghost" onclick="openWa(\'quittance\',\'' + m.id + '\',\'' + p.id + '\')">WhatsApp</button>' : '') +
       '<button class="btn btn-sm btn-danger" onclick="deletePaiement(\'' + m.id + '\',\'' + p.id + '\')">&times;</button></td></tr>';
   });
   html += '</table></div></div>';
@@ -2389,6 +2674,7 @@ function renderQuittanceModal() {
             '<div class="sigs"><div>Signature du bailleur</div><div>Signature du locataire</div></div>' +
           '</div>' +
           '<div class="form-actions no-print"><button class="btn btn-primary" onclick="doPrint()">Imprimer / Enregistrer en PDF</button>' +
+          '<button class="btn" onclick="openWa(\'quittance\',\'' + m.id + '\',\'' + p.id + '\')">Envoyer par WhatsApp</button>' +
           '<button class="btn btn-ghost" onclick="closeQuittance()">Fermer</button></div>' +
         '</div>' +
       '</div>' +
@@ -2436,6 +2722,7 @@ function render() {
     (IN_CLAUDE ? 'données propres à cet artefact' : 'données enregistrées localement dans ce navigateur') + '</footer>';
   html += renderQuittanceModal();
   html += renderRelanceModal();
+  html += renderWaModal();
 
   document.getElementById('app').innerHTML = html;
   applyReadOnly();
