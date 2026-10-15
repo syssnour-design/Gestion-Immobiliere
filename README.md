@@ -1,6 +1,6 @@
 # Registre Immobilier
 
-Application de gestion locative (cours, maisons, loyers, réparations, quittances)
+Application de gestion locative (cours, maisons, loyers, dépenses, quittances, relances)
 sous forme d'une page web unique et autonome (`index.html`).
 
 ## Déploiement sur GitHub Pages
@@ -36,6 +36,19 @@ Conséquences à connaître :
   **efface les données**.
 - Pensez à exporter régulièrement vers Excel (bouton en haut de l'application)
   pour conserver une sauvegarde en dehors du navigateur.
+
+## Relances des loyers impayés
+
+L'onglet **Relances** liste les locataires en retard (loyer dû au plus tard le 10 du mois,
+réglable) avec les mois impayés, et génère des lettres de relance personnalisées en **PDF**.
+La génération du PDF nécessite une connexion internet (bibliothèque jsPDF chargée en ligne).
+L'envoi reste manuel : remettez le PDF au locataire ou transmettez-le par WhatsApp ou e-mail.
+
+## États périodiques
+
+L'onglet **États** édite, pour une période du jour A au jour B : tableau de bord, balance
+recettes/dépenses, loyers encaissés, mensualités en retard et dépenses. Chaque état s'exporte
+en **PDF** et en **Excel**.
 
 ## Mettre à jour l'application plus tard
 
