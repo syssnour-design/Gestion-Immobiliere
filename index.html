@@ -179,6 +179,17 @@
   .letter th{color:#1c231e;background:#F1E9CE;}
   .letter td{border-bottom:1px solid #D7CFAE;}
   .letter p{margin:10px 0;}
+  @media(max-width:640px){
+    #app{padding:0 10px 60px;}
+    .topbar{padding:14px 0 8px;}
+    .brand h1{font-size:21px;}
+    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:0 4px;margin-top:10px;}
+    .tab-btn{min-width:0;padding:9px 2px;font-size:13px;line-height:1.2;text-align:center;border-bottom:2px solid var(--line);margin-bottom:0;}
+    .tab-btn.active{border-bottom-color:var(--brass);}
+    .tab-btn .badge{margin-left:2px !important;padding:1px 5px;font-size:10px;}
+    .actions-top{width:100%;}
+    .actions-top select{flex:1 1 0;min-width:0 !important;}
+  }
 </style>
 </head>
 <body>
@@ -199,17 +210,310 @@ var IN_CLAUDE = (typeof window.claude !== 'undefined');
 var LOCAL_KEY = 'registre-immobilier-state-v1';
 
 /* ===================== ÉTAT ===================== */
+/* ===================== SÉCURITÉ : COMPTES ET CHIFFREMENT ===================== */
+/* Les données sont chiffrées (AES-GCM 256) avec une clé de données unique. Cette clé est elle-même
+   protégée séparément pour chaque utilisateur (PBKDF2-SHA256 + AES-GCM) : aucun mot de passe,
+   ni empreinte de mot de passe, n'est stocké. Un mot de passe correct = la clé se déchiffre. */
+var PBKDF2_ITER = 250000;
+var IDLE_MS = 15 * 60 * 1000;
+var SEC = { blob: null, needSetup: false, acces: [], session: null, fails: 0, lockUntil: 0,
+  notice: '', err: '', loginVal: '', setupVals: {}, busy: false, snapshot: '', last: Date.now() };
+var ROLES = { admin: 'Administrateur', gestionnaire: 'Gestionnaire', lecteur: 'Lecture seule' };
+var _enc = new TextEncoder(), _dec = new TextDecoder();
+
+function emptyState() { return { cours: [], proprietaires: [], nextIds: {} }; }
 var state;
 (function initState() {
-  var embedded = JSON.parse(document.getElementById('state-data').textContent);
+  var src = JSON.parse(document.getElementById('state-data').textContent);
   if (!IN_CLAUDE) {
     try {
       var local = localStorage.getItem(LOCAL_KEY);
-      if (local) { state = JSON.parse(local); return; }
+      if (local) src = JSON.parse(local);
     } catch (e) {}
   }
-  state = embedded;
+  if (src && src.v === 2 && src.ct) { SEC.blob = src; SEC.acces = src.acces || []; state = emptyState(); }
+  else { state = src; SEC.needSetup = true; }
 })();
+
+function b64e(buf) { var b = new Uint8Array(buf), s = ''; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s); }
+function b64d(s) { var r = atob(s), b = new Uint8Array(r.length); for (var i = 0; i < r.length; i++) b[i] = r.charCodeAt(i); return b; }
+function rnd(n) { return crypto.getRandomValues(new Uint8Array(n)); }
+function gv(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+function normLogin(s) { return String(s || '').trim().toLowerCase(); }
+
+async function deriveKek(pw, salt) {
+  var base = await crypto.subtle.importKey('raw', _enc.encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: PBKDF2_ITER, hash: 'SHA-256' },
+    base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function wrapFor(login, pw, dekRaw) {
+  var salt = rnd(16), iv = rnd(12), kek = await deriveKek(pw, salt);
+  var wk = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, kek, dekRaw);
+  return { login: login, salt: b64e(salt), iv: b64e(iv), wk: b64e(wk) };
+}
+async function unwrap(acc, pw) {
+  var kek = await deriveKek(pw, b64d(acc.salt));
+  var raw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(acc.iv) }, kek, b64d(acc.wk));
+  return new Uint8Array(raw);
+}
+function importDek(raw) { return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']); }
+async function decryptBlob(raw) {
+  var key = await importDek(raw);
+  var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(SEC.blob.iv) }, key, b64d(SEC.blob.ct));
+  return JSON.parse(_dec.decode(pt));
+}
+async function sealState() {
+  var iv = rnd(12);
+  var ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, SEC.session.key, _enc.encode(JSON.stringify(state)));
+  var obj = { v: 2, acces: SEC.acces, iv: b64e(iv), ct: b64e(ct) };
+  SEC.blob = obj;
+  return JSON.stringify(obj);
+}
+
+async function openSession(uidv, raw) {
+  var u = (state.utilisateurs || []).filter(function (x) { return x.id === uidv; })[0];
+  if (!u) throw new Error('utilisateur');
+  SEC.session = { uid: u.id, nom: u.nom, login: u.login, role: u.role, dekRaw: raw, key: await importDek(raw) };
+  SEC.snapshot = JSON.stringify(state);
+  SEC.last = Date.now();
+  persistSession();
+}
+function persistSession() {
+  try {
+    if (SEC.session) sessionStorage.setItem('immo-sess', JSON.stringify({ uid: SEC.session.uid, dek: b64e(SEC.session.dekRaw), t: Date.now() }));
+    else sessionStorage.removeItem('immo-sess');
+  } catch (e) {}
+}
+function isAdmin() { return !!(SEC.session && SEC.session.role === 'admin'); }
+function isReadOnly() { return !!(SEC.session && SEC.session.role === 'lecteur'); }
+
+function logout(notice) {
+  SEC.session = null; SEC.notice = notice || ''; SEC.err = '';
+  state = emptyState(); normalizeState();
+  persistSession();
+  ui.tab = 'dashboard';
+  render();
+}
+async function restoreSession() {
+  if (!SEC.blob) return false;
+  try {
+    var s = JSON.parse(sessionStorage.getItem('immo-sess') || 'null');
+    if (!s || Date.now() - s.t > IDLE_MS) return false;
+    var raw = b64d(s.dek);
+    state = await decryptBlob(raw); normalizeState();
+    await openSession(s.uid, raw);
+    return true;
+  } catch (e) { state = emptyState(); normalizeState(); SEC.session = null; return false; }
+}
+['click', 'keydown', 'touchstart', 'mousemove'].forEach(function (ev) {
+  document.addEventListener(ev, function () { SEC.last = Date.now(); }, { passive: true });
+});
+setInterval(function () {
+  if (!SEC.session) return;
+  if (Date.now() - SEC.last > IDLE_MS) logout('Session fermée après 15 minutes d\'inactivité.');
+  else persistSession();
+}, 20000);
+
+/* ----- Connexion / création du premier compte ----- */
+async function doLogin() {
+  if (SEC.busy) return;
+  if (Date.now() < SEC.lockUntil) { SEC.err = 'Trop d\'échecs. Patientez quelques secondes.'; render(); return; }
+  var login = normLogin(gv('l-login')), pw = gv('l-pw');
+  SEC.loginVal = login; SEC.notice = '';
+  SEC.busy = true;
+  var btn = document.getElementById('l-btn'); if (btn) { btn.disabled = true; btn.textContent = 'Vérification…'; }
+  try {
+    var acc = SEC.acces.filter(function (a) { return a.login === login; })[0];
+    if (!acc) { await deriveKek(pw, rnd(16)); throw new Error('inconnu'); }
+    var raw = await unwrap(acc, pw);
+    state = await decryptBlob(raw); normalizeState();
+    await openSession(acc.id, raw);
+    SEC.fails = 0; SEC.err = ''; SEC.loginVal = '';
+  } catch (e) {
+    state = emptyState(); normalizeState(); SEC.session = null;
+    SEC.fails++;
+    if (SEC.fails >= 5) { SEC.lockUntil = Date.now() + 30000; SEC.fails = 0; SEC.err = 'Trop d\'échecs : patientez 30 secondes avant de réessayer.'; }
+    else SEC.err = 'Identifiant ou mot de passe incorrect.';
+  }
+  SEC.busy = false;
+  render();
+}
+async function doSetup() {
+  if (SEC.busy) return;
+  var nom = gv('s-nom').trim(), login = normLogin(gv('s-login')), pw = gv('s-pw'), pw2 = gv('s-pw2');
+  SEC.setupVals = { nom: nom, login: login };
+  var err = '';
+  if (!nom || !login) err = 'Le nom et l\'identifiant sont obligatoires.';
+  else if (!/^[a-z0-9._@-]{3,40}$/.test(login)) err = 'Identifiant : 3 à 40 caractères (lettres, chiffres, . _ - @), sans espace.';
+  else if (pw.length < 8) err = 'Le mot de passe doit comporter au moins 8 caractères.';
+  else if (pw !== pw2) err = 'Les deux mots de passe ne sont pas identiques.';
+  if (err) { SEC.err = err; render(); return; }
+  SEC.busy = true;
+  var btn = document.getElementById('s-btn'); if (btn) { btn.disabled = true; btn.textContent = 'Création…'; }
+  try {
+    var raw = rnd(32);
+    var acc = await wrapFor(login, pw, raw); acc.id = 'U-001';
+    SEC.acces = [acc];
+    state.utilisateurs = [{ id: 'U-001', login: login, nom: nom, role: 'admin' }];
+    SEC.needSetup = false; SEC.err = ''; SEC.setupVals = {};
+    await openSession('U-001', raw);
+    SEC.busy = false;
+    await save();
+  } catch (e) { SEC.busy = false; SEC.err = 'Création impossible : ' + (e && e.message ? e.message : 'erreur'); render(); }
+}
+
+/* ----- Gestion des comptes ----- */
+function lastAdminCount() { return (state.utilisateurs || []).filter(function (u) { return u.role === 'admin'; }).length; }
+function accOf(id) { return SEC.acces.filter(function (a) { return a.id === id; })[0]; }
+async function changeOwnPassword() {
+  var o = gv('c-old'), n1 = gv('c-new'), n2 = gv('c-new2');
+  if (n1.length < 8) { alert('Le nouveau mot de passe doit comporter au moins 8 caractères.'); return; }
+  if (n1 !== n2) { alert('Les deux nouveaux mots de passe ne sont pas identiques.'); return; }
+  var acc = accOf(SEC.session.uid);
+  try { await unwrap(acc, o); } catch (e) { alert('Mot de passe actuel incorrect.'); return; }
+  var na = await wrapFor(acc.login, n1, SEC.session.dekRaw); na.id = acc.id;
+  SEC.acces = SEC.acces.map(function (a) { return a.id === acc.id ? na : a; });
+  await save();
+  ui.savedFlag = 'Mot de passe modifié.'; render();
+}
+function showAddUser() { ui.addingUser = true; ui.resetFor = null; ui.delFor = null; render(); }
+function cancelAddUser() { ui.addingUser = false; render(); }
+async function submitAddUser() {
+  if (!isAdmin()) return;
+  var nom = gv('u-nom').trim(), login = normLogin(gv('u-login')), pw = gv('u-pw'), role = gv('u-role') || 'gestionnaire';
+  if (!nom || !login) { alert('Le nom et l\'identifiant sont obligatoires.'); return; }
+  if (!/^[a-z0-9._@-]{3,40}$/.test(login)) { alert('Identifiant : 3 à 40 caractères (lettres, chiffres, . _ - @), sans espace.'); return; }
+  if (SEC.acces.some(function (a) { return a.login === login; })) { alert('Cet identifiant existe déjà.'); return; }
+  if (pw.length < 8) { alert('Le mot de passe provisoire doit comporter au moins 8 caractères.'); return; }
+  if (!ROLES[role]) role = 'lecteur';
+  var n = state.nextIds.utilisateur || (state.utilisateurs.length + 1);
+  var id = 'U-' + String(n).padStart(3, '0');
+  state.nextIds.utilisateur = n + 1;
+  var acc = await wrapFor(login, pw, SEC.session.dekRaw); acc.id = id;
+  SEC.acces.push(acc);
+  state.utilisateurs.push({ id: id, login: login, nom: nom, role: role });
+  ui.addingUser = false;
+  await save();
+}
+async function changeUserRole(id, role) {
+  if (!isAdmin() || id === SEC.session.uid || !ROLES[role]) return;
+  state.utilisateurs.forEach(function (u) { if (u.id === id) u.role = role; });
+  await save();
+}
+function showReset(id) { ui.resetFor = id; ui.delFor = null; ui.addingUser = false; render(); }
+function cancelReset() { ui.resetFor = null; ui.delFor = null; render(); }
+async function submitReset(id) {
+  if (!isAdmin()) return;
+  var pw = gv('r-pw');
+  if (pw.length < 8) { alert('Le mot de passe doit comporter au moins 8 caractères.'); return; }
+  var old = accOf(id); if (!old) return;
+  var na = await wrapFor(old.login, pw, SEC.session.dekRaw); na.id = id;
+  SEC.acces = SEC.acces.map(function (a) { return a.id === id ? na : a; });
+  ui.resetFor = null;
+  await save();
+  ui.savedFlag = 'Mot de passe réinitialisé. Communiquez-le à l\'utilisateur.'; render();
+}
+function askDeleteUser(id) { ui.delFor = id; ui.resetFor = null; ui.addingUser = false; render(); }
+async function confirmDeleteUser(id) {
+  if (!isAdmin() || id === SEC.session.uid) return;
+  SEC.acces = SEC.acces.filter(function (a) { return a.id !== id; });
+  state.utilisateurs = state.utilisateurs.filter(function (u) { return u.id !== id; });
+  ui.delFor = null;
+  await save();
+}
+
+/* ----- Rendu ----- */
+function authShell(inner) {
+  return '<div style="max-width:420px;margin:8vh auto 0;padding:0 4px;">' +
+    '<div style="text-align:center;margin-bottom:18px;"><h1 style="font-size:26px;">Registre Immobilier</h1>' +
+    '<div style="color:var(--ink-soft);font-size:13px;margin-top:4px;">Accès réservé</div></div>' + inner + '</div>';
+}
+function enterKey(fn) { return ' onkeydown="if(event.key===\'Enter\'){' + fn + '()}"'; }
+function renderLogin() {
+  var locked = Date.now() < SEC.lockUntil;
+  var h = '<div class="form-box" style="margin-top:0;">' +
+    (SEC.notice ? '<div style="background:var(--amber-bg,#f6edd2);padding:8px 10px;border-radius:3px;font-size:13px;margin-bottom:12px;">' + esc(SEC.notice) + '</div>' : '') +
+    '<div class="field"><label>Identifiant</label><input type="text" id="l-login" autocomplete="username" autocapitalize="none" value="' + esc(SEC.loginVal) + '"' + enterKey('doLogin') + '></div>' +
+    '<div class="field" style="margin-top:10px;"><label>Mot de passe</label><input type="password" id="l-pw" autocomplete="current-password"' + enterKey('doLogin') + '></div>' +
+    (SEC.err ? '<div style="color:var(--red);font-size:13px;margin-top:10px;">' + esc(SEC.err) + '</div>' : '') +
+    '<div style="margin-top:14px;"><button class="btn btn-primary" id="l-btn" style="width:100%;"' + (locked ? ' disabled' : '') + ' onclick="doLogin()">Se connecter</button></div>' +
+    '</div><p style="color:var(--ink-faint);font-size:12px;margin-top:12px;text-align:center;">Mot de passe oublié ? Demandez à un administrateur de le réinitialiser.</p>';
+  return authShell(h);
+}
+function renderSetup() {
+  var v = SEC.setupVals || {};
+  var h = '<div class="form-box" style="margin-top:0;"><h4 style="margin-bottom:6px;">Première utilisation : créez le compte administrateur</h4>' +
+    '<p style="color:var(--ink-soft);font-size:12.5px;margin-bottom:12px;">Ce compte pourra ensuite créer les comptes des autres utilisateurs. Les données seront chiffrées.</p>' +
+    '<div class="field"><label>Nom complet</label><input type="text" id="s-nom" value="' + esc(v.nom || '') + '"></div>' +
+    '<div class="field" style="margin-top:10px;"><label>Identifiant</label><input type="text" id="s-login" autocomplete="username" autocapitalize="none" value="' + esc(v.login || '') + '"></div>' +
+    '<div class="field" style="margin-top:10px;"><label>Mot de passe (8 caractères minimum)</label><input type="password" id="s-pw" autocomplete="new-password"></div>' +
+    '<div class="field" style="margin-top:10px;"><label>Confirmer le mot de passe</label><input type="password" id="s-pw2" autocomplete="new-password"' + enterKey('doSetup') + '></div>' +
+    (SEC.err ? '<div style="color:var(--red);font-size:13px;margin-top:10px;">' + esc(SEC.err) + '</div>' : '') +
+    '<div style="margin-top:14px;"><button class="btn btn-primary" id="s-btn" style="width:100%;" onclick="doSetup()">Créer le compte et entrer</button></div>' +
+    '<p style="color:var(--red);font-size:12px;margin-top:12px;"><strong>Important :</strong> si tous les mots de passe administrateur sont perdus, les données ne peuvent pas être récupérées. Notez-le en lieu sûr et exportez régulièrement en Excel.</p></div>';
+  return authShell(h);
+}
+function renderAcces() {
+  var me = SEC.session;
+  var html = '<div class="section-head"><h2>Accès et sécurité</h2></div>';
+  html += '<div class="form-box" style="margin-top:0;"><h4 style="margin-bottom:8px;">Mon compte</h4>' +
+    '<div style="font-size:13.5px;margin-bottom:10px;"><strong>' + esc(me.nom) + '</strong> &middot; identifiant : ' + esc(me.login) + ' &middot; ' + esc(ROLES[me.role]) + '</div>' +
+    '<div class="grid3"><div class="field"><label>Mot de passe actuel</label><input type="password" id="c-old" autocomplete="current-password"></div>' +
+    '<div class="field"><label>Nouveau mot de passe</label><input type="password" id="c-new" autocomplete="new-password"></div>' +
+    '<div class="field"><label>Confirmer</label><input type="password" id="c-new2" autocomplete="new-password"></div></div>' +
+    '<div style="margin-top:12px;"><button class="btn btn-primary" onclick="changeOwnPassword()">Changer mon mot de passe</button></div></div>';
+  if (!isAdmin()) return html;
+
+  html += '<div class="section-head" style="margin-top:22px;"><h3>Utilisateurs</h3>' +
+    (ui.addingUser ? '' : '<button class="btn btn-primary" onclick="showAddUser()">+ Nouvel utilisateur</button>') + '</div>';
+  if (ui.addingUser) {
+    html += '<div class="form-box"><h4 style="margin-bottom:10px;">Nouvel utilisateur</h4><div class="grid2">' +
+      '<div class="field"><label>Nom complet</label><input type="text" id="u-nom"></div>' +
+      '<div class="field"><label>Identifiant</label><input type="text" id="u-login" autocapitalize="none"></div>' +
+      '<div class="field"><label>Mot de passe provisoire (8 car. min.)</label><input type="text" id="u-pw" autocomplete="off"></div>' +
+      '<div class="field"><label>Rôle</label><select id="u-role"><option value="gestionnaire">Gestionnaire : consulte et modifie</option><option value="lecteur">Lecture seule : consulte et exporte</option><option value="admin">Administrateur : tout, y compris les comptes</option></select></div>' +
+      '</div><div class="form-actions"><button class="btn btn-primary" onclick="submitAddUser()">Créer le compte</button><button class="btn btn-ghost" onclick="cancelAddUser()">Annuler</button></div></div>';
+  }
+  html += '<div class="table-wrap"><table><tr><th>Nom</th><th>Identifiant</th><th>Rôle</th><th></th></tr>';
+  state.utilisateurs.forEach(function (u) {
+    var self = u.id === me.uid;
+    var roleCell = self ? esc(ROLES[u.role]) + ' <span class="maison-sub">(vous)</span>' :
+      '<select onchange="changeUserRole(\'' + u.id + '\',this.value)">' + Object.keys(ROLES).map(function (r) {
+        return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + ROLES[r] + '</option>';
+      }).join('') + '</select>';
+    var act = '';
+    if (ui.resetFor === u.id) {
+      act = '<input type="text" id="r-pw" placeholder="Nouveau mot de passe" autocomplete="off" style="max-width:170px;"> <button class="btn btn-sm btn-primary" onclick="submitReset(\'' + u.id + '\')">Valider</button> <button class="btn btn-sm btn-ghost" onclick="cancelReset()">Annuler</button>';
+    } else if (ui.delFor === u.id) {
+      act = 'Supprimer ce compte ? <button class="btn btn-sm btn-danger" onclick="confirmDeleteUser(\'' + u.id + '\')">Oui, supprimer</button> <button class="btn btn-sm btn-ghost" onclick="cancelReset()">Non</button>';
+    } else {
+      act = (self ? '' : '<button class="btn btn-sm" onclick="showReset(\'' + u.id + '\')">Réinitialiser le mot de passe</button> <button class="btn btn-sm btn-danger" onclick="askDeleteUser(\'' + u.id + '\')">Supprimer</button>');
+    }
+    html += '<tr><td>' + esc(u.nom) + '</td><td>' + esc(u.login) + '</td><td>' + roleCell + '</td><td class="row-actions">' + act + '</td></tr>';
+  });
+  html += '</table></div>';
+  html += '<p style="color:var(--ink-faint);font-size:12px;margin-top:12px;">Administrateur : tout, y compris les comptes. Gestionnaire : consulte et modifie les données. Lecture seule : consulte, imprime et exporte, sans rien enregistrer. La session se ferme après 15 minutes d\'inactivité.</p>';
+  return html;
+}
+function userBar() {
+  var s = SEC.session;
+  return '<button class="btn btn-ghost" onclick="setTab(\'acces\')" title="Mon compte">&#128100; ' + esc(s.nom) + (s.role === 'lecteur' ? ' (lecture)' : '') + '</button>' +
+    '<button class="btn btn-ghost" onclick="logout()">Déconnexion</button>';
+}
+function applyReadOnly() {
+  if (!isReadOnly()) return;
+  var rx = /^(showAdd|showEdit|submit|delete|dup|edit|start|quickFill)/i;
+  Array.prototype.forEach.call(document.querySelectorAll('#app [onclick]'), function (el) {
+    if (rx.test(el.getAttribute('onclick') || '')) el.parentNode && el.parentNode.removeChild(el);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#app [onchange^="setParam"]'), function (el) { el.disabled = true; });
+}
+async function bootSecurity() {
+  if (SEC.blob) await restoreSession();
+  render();
+}
+
+function normalizeState() {
 if (!state.cours) state.cours = [];
 if (!state.nextIds) state.nextIds = {};
 ['proprietaire', 'cour', 'maison', 'paiement', 'depense', 'locataire'].forEach(function (k) {
@@ -252,6 +556,9 @@ state.cours.forEach(function (c) {
     delete m.reparations;
   });
 });
+
+}
+normalizeState();
 
 var _now = new Date();
 var ui = { tab: 'dashboard', openCours: {}, openMaisons: {}, addingCour: false,
@@ -378,20 +685,28 @@ function numberToFrenchWords(n) {
 function persistUi() {
   try { sessionStorage.setItem('immo-ui', JSON.stringify(ui)); } catch (e) {}
 }
-function buildPublishHtml() {
-  var newJson = JSON.stringify(state).replace(/</g, '\\u003c');
+async function buildPublishHtml() {
+  var newJson = (await sealState()).replace(/</g, '\\u003c');
   return PAGE_TEMPLATE.replace(
     /(<script id="state-data" type="application\/json">)[\s\S]*?(<\/script>)/,
     function (m, p1, p2) { return p1 + newJson + p2; }
   );
 }
 async function save() {
+  if (!SEC.session) return;
+  if (isReadOnly()) {
+    state = JSON.parse(SEC.snapshot); normalizeState();
+    ui.savedFlag = 'Compte en lecture seule : modification non enregistrée.';
+    render();
+    return;
+  }
   persistUi();
   render();
   if (IN_CLAUDE) {
     if (claudeArtifact) {
       try {
-        await claudeArtifact.publish(buildPublishHtml());
+        await claudeArtifact.publish(await buildPublishHtml());
+        SEC.snapshot = JSON.stringify(state);
       } catch (e) {
         if (e && e.code === 'conflict') { /* la vue va se recharger */ }
         else {
@@ -405,7 +720,8 @@ async function save() {
     }
   } else {
     try {
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(state));
+      localStorage.setItem(LOCAL_KEY, await sealState());
+      SEC.snapshot = JSON.stringify(state);
     } catch (e) {
       ui.savedFlag = 'Sauvegarde locale impossible dans ce navigateur — modifications non conservées après fermeture.';
       render();
@@ -1605,7 +1921,7 @@ function renderTopbar() {
         '<div class="brand"><h1>Registre Immobilier</h1><div class="sub">Suivi multi-propriétaires &middot; loyers, réparations et quittances</div></div>' +
         '<div class="actions-top">' +
           '<select onchange="setFilterProprietaire(this.value)" style="padding:8px 10px;border:1px solid var(--line);border-radius:3px;background:var(--paper-raised);color:var(--ink);font-size:13.5px;min-width:190px;">' + ownerOptions + '</select>' +
-          '<button class="btn" onclick="exportExcel()">&#128190; Exporter en Excel</button>' +
+          '<button class="btn" onclick="exportExcel()">&#128190; Exporter en Excel</button>' + userBar() +
         '</div>' +
       '</div>' +
       '<div class="tabs">' +
@@ -1615,6 +1931,7 @@ function renderTopbar() {
         tabBtn('quittances', 'Quittances') +
         tabBtn('relances', 'Relances' + relanceBadge()) +
         tabBtn('etats', 'États') +
+        tabBtn('acces', 'Accès') +
       '</div>' +
     '</div>';
 }
@@ -2097,6 +2414,11 @@ function infoLine(label, value) {
 
 /* ===================== RENDU PRINCIPAL ===================== */
 function render() {
+  if (!SEC.session) {
+    document.getElementById('app').innerHTML = SEC.needSetup ? renderSetup() : renderLogin();
+    document.body.classList.remove('print-mode');
+    return;
+  }
   var flag = ui.savedFlag;
   ui.savedFlag = '';
   var content = '';
@@ -2105,6 +2427,7 @@ function render() {
   else if (ui.tab === 'registre') content = renderRegistre();
   else if (ui.tab === 'relances') content = renderRelances();
   else if (ui.tab === 'etats') content = renderEtats();
+  else if (ui.tab === 'acces') content = renderAcces();
   else content = renderQuittancesTab();
 
   var html = renderTopbar() + '<div class="section">' + content + '</div>';
@@ -2115,10 +2438,11 @@ function render() {
   html += renderRelanceModal();
 
   document.getElementById('app').innerHTML = html;
+  applyReadOnly();
   if (ui.printing) document.body.classList.add('print-mode');
   else document.body.classList.remove('print-mode');
 }
 
 /* ===================== DÉMARRAGE ===================== */
-render();
+bootSecurity();
 </script></body></html>
