@@ -2194,6 +2194,96 @@ function renderWaModal() {
     '</div></div></div>';
 }
 
+/* ===================== SAISIE ASSISTÉE : LISTES ET MÉMOIRE DES SAISIES ===================== */
+/* Les suggestions proviennent de tout ce qui a déjà été saisi dans l'application. */
+function selectLocataire(id, selected) {
+  var opts = '<option value="">— Choisir un locataire —</option>';
+  var rows = [];
+  scopedCours().forEach(function (c) {
+    c.maisons.forEach(function (m) { rows.push({ c: c, m: m }); });
+  });
+  rows.sort(function (a, b) { return String(a.m.locataireId || '').localeCompare(String(b.m.locataireId || ''), 'fr', { numeric: true }); });
+  rows.forEach(function (r) {
+    var lid = r.m.locataireId || '';
+    var lab = lid + ' — ' + (r.m.locataireNom ? r.m.locataireNom : 'logement libre') + ' (' + r.c.nom + ' · ' + r.m.nom + ')';
+    opts += '<option value="' + esc(lid) + '"' + (lid && lid === selected ? ' selected' : '') + '>' + esc(lab) + '</option>';
+  });
+  return '<div class="field"><label>ID Locataire *</label><select id="' + id + '" onchange="ui.quickLocId=this.value;persistUi()">' + opts + '</select></div>';
+}
+
+function _distinct(vals) {
+  var cnt = {};
+  vals.forEach(function (v) {
+    v = String(v == null ? '' : v).trim();
+    if (v) cnt[v] = (cnt[v] || 0) + 1;
+  });
+  return Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a] || a.localeCompare(b, 'fr', { numeric: true }); }).slice(0, 60);
+}
+function _allMaisons() {
+  var out = [];
+  (state.cours || []).forEach(function (c) { (c.maisons || []).forEach(function (m) { out.push(m); }); });
+  return out;
+}
+function _allDepenses() {
+  var out = [];
+  (state.cours || []).forEach(function (c) {
+    (c.depensesGenerales || []).forEach(function (d) { out.push(d); });
+    (c.maisons || []).forEach(function (m) { (m.depenses || []).forEach(function (d) { out.push(d); }); });
+  });
+  return out;
+}
+function _allPaiements() {
+  var out = [];
+  _allMaisons().forEach(function (m) { (m.paiements || []).forEach(function (p) { out.push(p); }); });
+  return out;
+}
+var SUGGEST = {
+  'f-prop-nom': function () { return (state.proprietaires || []).map(function (p) { return p.nom; }); },
+  'f-prop-tel': function () { return (state.proprietaires || []).map(function (p) { return p.telephone; }); },
+  'f-cour-nom': function () { return (state.cours || []).map(function (c) { return c.nom; }); },
+  'f-cour-loc': function () { return (state.cours || []).map(function (c) { return c.localisation; }); },
+  'f-cour-desc': function () { return (state.cours || []).map(function (c) { return c.description; }); },
+  'f-maison-nom': function () { return _allMaisons().map(function (m) { return m.nom; }); },
+  'f-maison-equip': function () { return _allMaisons().map(function (m) { return m.equipements; }); },
+  'f-maison-adresse': function () { return _allMaisons().map(function (m) { return m.adresse; }); },
+  'f-maison-loyer': function () { return _allMaisons().map(function (m) { return m.loyer; }); },
+  'f-maison-pieces': function () { return _allMaisons().map(function (m) { return m.pieces; }); },
+  'f-maison-superficie': function () { return _allMaisons().map(function (m) { return m.superficie; }); },
+  'f-maison-locataire': function () { return _allMaisons().map(function (m) { return m.locataireNom; }); },
+  'f-maison-tel': function () { return _allMaisons().map(function (m) { return m.locataireTel; }); },
+  'f-maison-locid': function () { return _allMaisons().map(function (m) { return m.locataireId; }); },
+  'f-pay-note': function () { return _allPaiements().map(function (p) { return p.note; }); },
+  'f-pay-du': function () { return _allPaiements().map(function (p) { return p.montantDu; }); },
+  'f-pay-paye': function () { return _allPaiements().map(function (p) { return p.montantPaye; }); },
+  'f-dep-desc': function () { return _allDepenses().map(function (d) { return d.description; }); },
+  'f-dep-prestataire': function () { return _allDepenses().map(function (d) { return d.prestataire; }); },
+  'f-dep-montant': function () { return _allDepenses().map(function (d) { return d.montant; }); },
+  'wa-tel': function () { return _allMaisons().map(function (m) { return m.locataireTel; }); }
+};
+function attachDatalists() {
+  var box = document.getElementById('dl-box');
+  if (!box) {
+    box = document.createElement('div'); box.id = 'dl-box'; box.hidden = true;
+    document.body.appendChild(box);
+  }
+  var made = {}, html = '';
+  Array.prototype.forEach.call(document.querySelectorAll('#app input'), function (el) {
+    var t = (el.getAttribute('type') || 'text').toLowerCase();
+    if (!el.id || (t !== 'text' && t !== 'tel' && t !== 'number')) return;
+    var key = el.id.replace(/^f-e(prop|cour|maison)-/, 'f-$1-').replace(/-(PR|CR|M|DP|PM)-\d+$/, '');
+    var fn = SUGGEST[key];
+    if (!fn) return;
+    var dlid = 'dl-' + key;
+    if (!made[dlid]) {
+      made[dlid] = true;
+      html += '<datalist id="' + dlid + '">' + _distinct(fn()).map(function (v) { return '<option value="' + esc(v) + '"></option>'; }).join('') + '</datalist>';
+    }
+    el.setAttribute('list', dlid);
+    el.setAttribute('autocomplete', 'off');
+  });
+  box.innerHTML = html;
+}
+
 /* ===================== RENDU : TOPBAR ===================== */
 function renderTopbar() {
   var ownerOptions = '<option value="all"' + (ui.filterProprietaire === 'all' ? ' selected' : '') + '>Tous les propriétaires</option>' +
@@ -2613,14 +2703,14 @@ function renderQuittancesTab() {
   var html = '<div class="section-head"><h2>Quittances</h2></div>';
 
   html += '<div class="form-box"><h4 style="margin-bottom:10px;">Remplissage rapide</h4>' +
-    '<p style="color:var(--ink-soft);font-size:13px;margin:0 0 10px;">Indiquez l\'ID du locataire et le mois concerné : la quittance est retrouvée ou générée automatiquement.</p>' +
+    '<p style="color:var(--ink-soft);font-size:13px;margin:0 0 10px;">Choisissez le locataire et le mois concerné : la quittance est retrouvée ou générée automatiquement.</p>' +
     '<div class="grid3">' +
-    field('ID Locataire *', 'text', 'f-quick-locid', '', 'Ex : LOC-001') +
+    selectLocataire('f-quick-locid', ui.quickLocId) +
     field('Mois de paiement *', 'month', 'f-quick-mois', currentPeriode()) +
     '</div>' +
     (ui.quickFillError ? '<div style="color:var(--red);font-size:13px;margin-top:4px;">' + esc(ui.quickFillError) + '</div>' : '') +
     '<div class="form-actions"><button class="btn btn-primary" onclick="quickFillQuittance()">Remplir la quittance</button></div>' +
-    '<p style="color:var(--ink-faint);font-size:12px;margin:10px 0 0;">L\'ID Locataire de chaque maison est visible dans l\'onglet « Cours &amp; maisons ».</p>' +
+    '<p style="color:var(--ink-faint);font-size:12px;margin:10px 0 0;">Choisissez le locataire dans la liste (ID, nom, cour et maison).</p>' +
     '</div>';
 
   if (!rows.length) {
@@ -2725,6 +2815,7 @@ function render() {
   html += renderWaModal();
 
   document.getElementById('app').innerHTML = html;
+  attachDatalists();
   applyReadOnly();
   if (ui.printing) document.body.classList.add('print-mode');
   else document.body.classList.remove('print-mode');
