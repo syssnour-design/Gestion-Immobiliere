@@ -2007,6 +2007,11 @@ function waMessageQuittance(found, p) {
 function buildQuittancePdf(found, p) {
   if (!window.jspdf || !window.jspdf.jsPDF) return null;
   var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  drawQuittancePage(doc, found, p);
+  return doc;
+}
+/* Dessine une quittance sur la page courante du document PDF. */
+function drawQuittancePage(doc, found, p) {
   var m = found.maison, c = found.cour;
   var owner = findProprietaire(c.proprietaireId) || { nom: '', telephone: '' };
   var ML = 20, W = 170, y = 24;
@@ -2046,7 +2051,6 @@ function buildQuittancePdf(found, p) {
   doc.text('Signature du locataire', ML + W - 60, y + 14, { baseline: 'top' });
   doc.setDrawColor(150, 150, 150); doc.setLineWidth(0.3);
   doc.line(ML, y + 12, ML + 70, y + 12); doc.line(ML + W - 70, y + 12, ML + W, y + 12);
-  return doc;
 }
 
 /* ----- Boîte de dialogue d'envoi ----- */
@@ -2294,7 +2298,7 @@ var BK_FORMAT = 'registre-immobilier-sauvegarde';
 var BK_LAST_KEY = 'registre-immobilier-lastbackup';
 var BK_AUTO_KEY = 'registre-immobilier-autobackups-v1';
 var BK_AUTO_MAX = 5;
-var BK = { pending: null, err: '', msg: '', needPw: false, confirming: false, busy: false, fname: '' };
+var BK = { resetAsk: false, pending: null, err: '', msg: '', needPw: false, confirming: false, busy: false, fname: '' };
 
 function bkPad(n) { return (n < 10 ? '0' : '') + n; }
 function bkStamp(d) {
@@ -2524,7 +2528,403 @@ function renderSauvegarde() {
     html += '</table></div>';
   }
   html += '</div>';
+  html += renderResetBox();
   return html;
+}
+
+/* ---- Réinitialisation (base vide) ---- */
+function askResetData() { if (!isAdmin()) return; BK.resetAsk = true; BK.err = ''; BK.msg = ''; render(); }
+function resetDataCancel() { BK.resetAsk = false; BK.err = ''; render(); }
+async function doResetData() {
+  if (!isAdmin() || BK.busy) return;
+  if (gv('rs-confirm').trim().toUpperCase() !== 'REINITIALISER') {
+    BK.err = 'Pour confirmer, saisissez le mot REINITIALISER dans la zone prévue.'; render(); return;
+  }
+  BK.busy = true; BK.err = '';
+  try {
+    await autoBackup(true, 'avant réinitialisation');
+    var keep = state.utilisateurs, nu = (state.nextIds || {}).utilisateur;
+    state = emptyState(); state.utilisateurs = keep;
+    if (nu) state.nextIds.utilisateur = nu;
+    normalizeState();
+    ui.openCours = {}; ui.openMaisons = {}; ui.printing = null; ui.filterProprietaire = 'all';
+    ui.quickLocId = ''; ui.multi = null; ui.hist = null; ui.batch = null;
+    BK.pending = null; BK.needPw = false; BK.confirming = false; BK.resetAsk = false;
+    BK.busy = false;
+    await save();
+    BK.msg = 'Données réinitialisées : l\'application est vide. Les comptes utilisateurs sont conservés. Une copie des anciennes données figure dans les copies automatiques de ce navigateur.';
+  } catch (e) { BK.err = 'La réinitialisation a échoué.'; }
+  BK.busy = false;
+  render();
+}
+function renderResetBox() {
+  if (!isAdmin()) return '';
+  var cur = bkSummary(state);
+  var html = '<div class="form-box" style="border-color:var(--red);"><h4 style="margin-bottom:8px;color:var(--red);">4. Réinitialiser les données (base vide)</h4>' +
+    '<p style="font-size:13.5px;margin:0 0 6px;">Efface <strong>toutes les données de gestion</strong> : propriétaires, cours, maisons, locataires, paiements, quittances, dépenses et relances. Les numéros repartent de 1.</p>' +
+    '<p style="font-size:13.5px;margin:0 0 10px;">Les comptes utilisateurs et leurs mots de passe sont <strong>conservés</strong>. Données actuelles : ' + esc(bkSumText(cur)) + '.</p>';
+  if (!BK.resetAsk) {
+    html += '<button class="btn btn-danger" onclick="askResetData()">Réinitialiser les données…</button>';
+  } else {
+    html += '<div style="border-top:1px solid var(--line);padding-top:12px;"><p style="color:var(--red);font-size:13.5px;margin:0 0 8px;"><strong>Action irréversible.</strong> Téléchargez d\'abord une sauvegarde si vous pouvez avoir besoin de ces données (bloc 1). Une copie de sécurité est en plus placée dans les copies automatiques de ce navigateur.</p>' +
+      '<div class="field" style="max-width:340px;"><label>Pour confirmer, saisissez le mot REINITIALISER</label><input type="text" id="rs-confirm" autocomplete="off" autocapitalize="characters"' + enterKey('doResetData') + '></div>' +
+      '<div class="form-actions"><button class="btn btn-danger" onclick="doResetData()">Effacer toutes les données</button><button class="btn btn-ghost" onclick="resetDataCancel()">Annuler</button></div></div>';
+  }
+  return html + '</div>';
+}
+
+/* ===================== QUITTANCES GROUPÉES : PLUSIEURS LOCATAIRES, PLUSIEURS MOIS ===================== */
+var MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+var MULTI_MAX = 400;
+
+function multiState() {
+  if (!ui.multi) ui.multi = {};
+  var u = ui.multi;
+  if (!u.locs) u.locs = {};
+  if (!u.months) u.months = {};
+  if (!u.year) u.year = Number(currentPeriode().slice(0, 4));
+  if (u.creer === undefined) u.creer = false;
+  return u;
+}
+function multiLocataires() {
+  var out = [];
+  scopedCours().forEach(function (c) {
+    c.maisons.forEach(function (m) { if (m.locataireId) out.push({ c: c, m: m }); });
+  });
+  return out;
+}
+function multiMonthsSelected() { return Object.keys(multiState().months).filter(function (k) { return multiState().months[k]; }).sort(); }
+function multiLocsSelected() {
+  var u = multiState();
+  return multiLocataires().filter(function (r) { return u.locs[r.m.locataireId]; });
+}
+function quittanceNumberFor(p) {
+  if (p.numeroQuittance) return p.numeroQuittance;
+  var year = (p.datePaiement || todayISO()).slice(0, 4);
+  return 'QT-' + year + '-' + String(state.nextIds.paiement).padStart(3, '0') + '-' + p.id.split('-')[1];
+}
+
+/* Liste des couples (locataire, mois) avec leur situation. */
+function multiItems() {
+  var u = multiState(), months = multiMonthsSelected(), items = [];
+  var canCreate = u.creer && !isReadOnly();
+  multiLocsSelected().forEach(function (r) {
+    months.forEach(function (periode) {
+      var p = (r.m.paiements || []).filter(function (x) { return x.periode === periode; })[0] || null;
+      var st;
+      if (p && Number(p.montantPaye) > 0) st = 'existant';
+      else if (canCreate && Number(r.m.loyer) > 0 && String(r.m.locataireNom || '').trim()) st = 'creer';
+      else st = 'ignore';
+      items.push({ c: r.c, m: r.m, p: p, periode: periode, status: st });
+    });
+  });
+  return items;
+}
+
+/* ---- Sélection (sans re-rendu complet, pour garder la position dans les listes) ---- */
+function multiMonthsText() {
+  var ms = multiMonthsSelected();
+  return ms.length ? (ms.length + ' mois : ' + ms.map(function (k) { return MOIS_COURTS[Number(k.slice(5, 7)) - 1] + ' ' + k.slice(0, 4); }).join(', ')) : 'Aucun mois sélectionné';
+}
+function multiRefresh() {
+  var u = multiState();
+  var nl = multiLocsSelected().length, nm = multiMonthsSelected().length;
+  var a = document.getElementById('multi-sum-locs'); if (a) a.textContent = nl + ' locataire(s) sélectionné(s)';
+  var b = document.getElementById('multi-sum-months');
+  if (b) b.textContent = multiMonthsText();
+  Array.prototype.forEach.call(document.querySelectorAll('input[data-loc]'), function (el) { el.checked = !!u.locs[el.getAttribute('data-loc')]; });
+  Array.prototype.forEach.call(document.querySelectorAll('input[data-mon]'), function (el) { el.checked = !!u.months[el.getAttribute('data-mon')]; });
+  if (u.preview) { u.preview = false; var pv = document.getElementById('multi-preview'); if (pv && pv.parentNode) pv.parentNode.removeChild(pv); }
+  u.msg = ''; var mg = document.getElementById('multi-msg'); if (mg && mg.parentNode) mg.parentNode.removeChild(mg);
+  persistUi();
+}
+function multiToggleLoc(id, on) { multiState().locs[id] = !!on; multiRefresh(); }
+function multiLocsAll(on) { var u = multiState(); multiLocataires().forEach(function (r) { u.locs[r.m.locataireId] = !!on; }); multiRefresh(); }
+function multiLocsCour(courId, on) {
+  var u = multiState();
+  multiLocataires().forEach(function (r) { if (r.c.id === courId) u.locs[r.m.locataireId] = !!on; });
+  multiRefresh();
+}
+function multiToggleMonth(k, on) { multiState().months[k] = !!on; multiRefresh(); }
+function multiSetYear(y) { multiState().year = Number(y); persistUi(); render(); }
+function multiYearAll(on) {
+  var u = multiState();
+  for (var i = 1; i <= 12; i++) u.months[u.year + '-' + (i < 10 ? '0' : '') + i] = !!on;
+  multiRefresh();
+}
+function multiCurrentMonth() { var u = multiState(); u.months = {}; u.months[currentPeriode()] = true; u.year = Number(currentPeriode().slice(0, 4)); persistUi(); render(); }
+function multiRange() {
+  var a = gv('f-multi-from'), b = gv('f-multi-to'), u = multiState();
+  if (!a || !b) { alert('Indiquez le premier et le dernier mois de la plage.'); return; }
+  if (a > b) { var t = a; a = b; b = t; }
+  var y = Number(a.slice(0, 4)), mo = Number(a.slice(5, 7)), n = 0;
+  while ((y + '-' + (mo < 10 ? '0' : '') + mo) <= b && n < 120) {
+    u.months[y + '-' + (mo < 10 ? '0' : '') + mo] = true;
+    mo++; if (mo > 12) { mo = 1; y++; }
+    n++;
+  }
+  u.year = Number(a.slice(0, 4));
+  persistUi(); render();
+}
+function multiSetCreer(on) { multiState().creer = !!on; var u = multiState(); u.preview = false; u.msg = ''; persistUi(); render(); }
+function multiPrepare() {
+  var u = multiState();
+  u.msg = '';
+  if (!multiLocsSelected().length) { alert('Sélectionnez au moins un locataire.'); return; }
+  if (!multiMonthsSelected().length) { alert('Sélectionnez au moins un mois.'); return; }
+  u.preview = true; persistUi(); render();
+}
+
+/* ---- Génération ---- */
+async function multiGenerate(mode) {
+  var u = multiState();
+  if (u.busy) return;
+  var items = multiItems().filter(function (i) { return i.status !== 'ignore'; });
+  if (!items.length) { alert('Aucune quittance à générer.'); return; }
+  if (items.length > MULTI_MAX) { alert('Trop de quittances d\'un coup (' + items.length + '). Limite : ' + MULTI_MAX + '. Réduisez la sélection.'); return; }
+  u.busy = true;
+  try {
+    var ro = isReadOnly(), changed = false, created = 0, out = [];
+    items.forEach(function (it) {
+      var p = it.p;
+      if (it.status === 'creer') {
+        if (p) {
+          p.montantPaye = p.montantDu || it.m.loyer;
+          if (!p.datePaiement) p.datePaiement = todayISO();
+          if (!p.mode) p.mode = 'Espèces';
+        } else {
+          p = { id: uid('paiement'), periode: it.periode, dateEcheance: '', datePaiement: todayISO(), montantDu: it.m.loyer, montantPaye: it.m.loyer,
+            mode: 'Espèces', note: 'Généré depuis les quittances groupées', numeroQuittance: null };
+          it.m.paiements.push(p);
+          it.m.paiements.sort(function (a, b) { return (a.periode || '').localeCompare(b.periode || ''); });
+        }
+        changed = true; created++;
+      }
+      if (ro) out.push({ cour: it.c, maison: it.m, p: Object.assign({}, p, { numeroQuittance: quittanceNumberFor(p) }) });
+      else {
+        if (!p.numeroQuittance) { ensureQuittanceNumber(p); changed = true; }
+        out.push({ cour: it.c, maison: it.m, p: p });
+      }
+    });
+    var nbIgnore = multiItems().filter(function (i) { return i.status === 'ignore'; }).length;
+    var stamp = todayISO();
+    if (mode === 'pdf') {
+      var doc = buildQuittancesPdf(out);
+      if (!doc) { alert('Le générateur PDF n\'a pas pu se charger. Vérifiez la connexion internet puis réessayez.'); u.busy = false; return; }
+      if (changed) await save();
+      var ok = await saveBlob('quittances-' + stamp + '.pdf', doc.output('blob'));
+      u.msg = ok ? (out.length + ' quittance(s) dans le fichier quittances-' + stamp + '.pdf' + (created ? ' ; ' + created + ' paiement(s) créé(s) comme payé(s) en espèces' : '') + (nbIgnore ? ' ; ' + nbIgnore + ' ignorée(s) faute de paiement' : '') + '.') : '';
+    } else {
+      if (changed) await save();
+      var html = buildReceiptsStandaloneHtml(out);
+      var w = null;
+      try { w = window.open('', '_blank'); } catch (e) { w = null; }
+      if (w && !w.closed) { w.document.open(); w.document.write(html); w.document.close(); }
+      else alert('La fenêtre d\'impression a été bloquée par le navigateur. Autorisez les pop-ups pour ce site, ou utilisez « Télécharger en PDF ».');
+      u.msg = out.length + ' quittance(s) envoyée(s) à l\'impression' + (created ? ' ; ' + created + ' paiement(s) créé(s)' : '') + '.';
+    }
+    u.preview = false;
+  } catch (e) { u.msg = ''; alert('La génération a échoué.'); }
+  u.busy = false;
+  persistUi();
+  render();
+}
+function buildQuittancesPdf(list) {
+  if (!window.jspdf || !window.jspdf.jsPDF) return null;
+  var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  list.forEach(function (it, i) {
+    if (i > 0) doc.addPage();
+    drawQuittancePage(doc, { cour: it.cour, maison: it.maison }, it.p);
+  });
+  return doc;
+}
+function buildReceiptsStandaloneHtml(list) {
+  var pages = list.map(function (it, i) {
+    var c = it.cour, m = it.maison, p = it.p;
+    var owner = findProprietaire(c.proprietaireId) || { nom: '', telephone: '' };
+    var rows = [['Bailleur', owner.nom || '—'], ['Téléphone bailleur', owner.telephone || '—'], ['Cour', c.nom],
+      ['Maison', m.nom + (m.adresse ? ' — ' + m.adresse : '')], ['Locataire', m.locataireNom || '—'],
+      ['Période concernée', monthLabel(p.periode)], ['Mode de paiement', p.mode || '—'], ['Date de paiement', p.datePaiement || '—']
+    ].map(function (r) { return recRow(r[0], r[1]); }).join('');
+    return '<section class="q"' + (i < list.length - 1 ? ' style="page-break-after:always;"' : '') + '>' +
+      '<h2>Quittance de loyer</h2><div class="rnum">N&deg; ' + esc(p.numeroQuittance || '') + '</div>' +
+      '<table>' + rows + '</table>' +
+      '<div class="amount-box"><div>Montant re&ccedil;u</div><div class="big">' + fmtMoney(p.montantPaye) + '</div>' +
+      '<div class="amount-note">Arr&ecirc;t&eacute;e la pr&eacute;sente quittance &agrave; la somme de&nbsp;: ' + esc(numberToFrenchWords(p.montantPaye) + ' francs CFA') + '.</div></div>' +
+      '<div class="sigs"><div>Signature du bailleur</div><div>Signature du locataire</div></div></section>';
+  }).join('');
+  return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Quittances</title><style>' +
+    'body{font-family:Arial,Helvetica,sans-serif;color:#1c231e;background:#fff;margin:0;}' +
+    '.q{padding:36px;}' +
+    'h2{font-family:Georgia,"Times New Roman",serif;font-size:22px;letter-spacing:.3px;border-bottom:2px solid #8C6A22;padding-bottom:10px;margin-bottom:16px;}' +
+    '.rnum{color:#657064;font-size:12.5px;margin-top:-10px;margin-bottom:18px;}' +
+    'table{width:100%;font-size:14px;border-collapse:collapse;}td{padding:5px 0;border:none;vertical-align:top;}td.rl{color:#657064;width:44%;}' +
+    '.amount-box{background:#F1E9CE;border:1px solid #D7CFAE;padding:12px 16px;margin:16px 0;border-radius:3px;}' +
+    '.amount-box .big{font-family:Georgia,"Times New Roman",serif;font-size:20px;font-weight:700;}' +
+    '.amount-note{font-size:12.5px;color:#657064;margin-top:6px;}' +
+    '.sigs{display:flex;justify-content:space-between;margin-top:52px;font-size:12.5px;color:#657064;}' +
+    '.sigs div{width:45%;border-top:1px solid #999;padding-top:6px;text-align:center;}' +
+    '@media print{.q{padding:0;}}</style></head><body>' + pages +
+    '<script>window.onload=function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},200);};</' + 'script></body></html>';
+}
+
+/* ---- Affichage ---- */
+function renderMultiQuittances() {
+  var u = multiState(), ro = isReadOnly();
+  var locs = multiLocataires();
+  var html = '<div class="form-box"><h4 style="margin-bottom:6px;">Quittances groupées</h4>' +
+    '<p style="color:var(--ink-soft);font-size:13px;margin:0 0 12px;">Générez en une fois les quittances de plusieurs locataires et de plusieurs mois, dans un seul fichier PDF (une quittance par page).</p>';
+  if (u.msg) html += '<div id="multi-msg" style="background:var(--green-bg);color:var(--green);padding:8px 10px;border-radius:3px;font-size:13px;margin-bottom:12px;"><strong>' + esc(u.msg) + '</strong></div>';
+
+  /* 1. Locataires */
+  html += '<h5 style="margin:0 0 6px;font-size:13.5px;">1. Locataires <span id="multi-sum-locs" class="maison-sub" style="font-weight:400;">' + multiLocsSelected().length + ' locataire(s) sélectionné(s)</span></h5>';
+  if (!locs.length) {
+    html += '<div class="empty-hint">Aucun locataire enregistré (renseignez l\'ID Locataire d\'une maison).</div>';
+  } else {
+    html += '<div class="form-actions" style="margin:0 0 8px;flex-wrap:wrap;"><button class="btn btn-sm" onclick="multiLocsAll(true)">Tout cocher</button><button class="btn btn-sm btn-ghost" onclick="multiLocsAll(false)">Tout décocher</button></div>' +
+      '<div style="max-height:240px;overflow:auto;border:1px solid var(--line);background:var(--paper-raised);border-radius:3px;padding:6px 10px;">';
+    var lastCour = null;
+    locs.forEach(function (r) {
+      if (!lastCour || lastCour !== r.c.id) {
+        lastCour = r.c.id;
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;font-weight:600;font-size:12.5px;color:var(--ink-soft);">' + esc(r.c.nom) +
+          '<span><button class="btn btn-sm btn-ghost" onclick="multiLocsCour(\'' + r.c.id + '\',true)">cocher la cour</button><button class="btn btn-sm btn-ghost" onclick="multiLocsCour(\'' + r.c.id + '\',false)">décocher</button></span></div>';
+      }
+      var lid = r.m.locataireId;
+      html += '<label style="display:flex;gap:8px;align-items:flex-start;padding:3px 0;font-size:13.5px;cursor:pointer;"><input type="checkbox" data-loc="' + esc(lid) + '"' + (u.locs[lid] ? ' checked' : '') +
+        ' onchange="multiToggleLoc(this.getAttribute(\'data-loc\'),this.checked)" style="margin-top:3px;"> <span><strong>' + esc(lid) + '</strong> — ' + esc(r.m.locataireNom || 'logement libre') + ' <span class="maison-sub">(' + esc(r.m.nom) + ')</span></span></label>';
+    });
+    html += '</div>';
+  }
+
+  /* 2. Mois */
+  var y0 = Number(currentPeriode().slice(0, 4)), years = {};
+  years[y0 - 1] = 1; years[y0] = 1; years[y0 + 1] = 1; years[u.year] = 1;
+  locs.forEach(function (r) { (r.m.paiements || []).forEach(function (p) { if (p.periode) years[Number(p.periode.slice(0, 4))] = 1; }); });
+  Object.keys(u.months).forEach(function (k) { years[Number(k.slice(0, 4))] = 1; });
+  var yl = Object.keys(years).map(Number).sort();
+  html += '<h5 style="margin:16px 0 6px;font-size:13.5px;">2. Mois <span id="multi-sum-months" class="maison-sub" style="font-weight:400;">' + esc(multiMonthsText()) + '</span></h5>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;"><select id="f-multi-year" onchange="multiSetYear(this.value)" style="border:1px solid var(--line);background:var(--paper-raised);color:var(--ink);border-radius:3px;padding:6px 8px;">' +
+    yl.map(function (y) { return '<option value="' + y + '"' + (y === u.year ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select>' +
+    '<button class="btn btn-sm" onclick="multiYearAll(true)">Toute l\'année</button><button class="btn btn-sm btn-ghost" onclick="multiYearAll(false)">Aucun mois</button><button class="btn btn-sm" onclick="multiCurrentMonth()">Mois en cours seul</button></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px;">';
+  for (var i = 1; i <= 12; i++) {
+    var k = u.year + '-' + (i < 10 ? '0' : '') + i;
+    html += '<label style="display:flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--paper-raised);border-radius:3px;padding:6px 8px;font-size:13px;cursor:pointer;">' +
+      '<input type="checkbox" data-mon="' + k + '"' + (u.months[k] ? ' checked' : '') + ' onchange="multiToggleMonth(this.getAttribute(\'data-mon\'),this.checked)"> ' + MOIS_COURTS[i - 1] + '</label>';
+  }
+  html += '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;">' +
+    '<div class="field"><label>Plage : du mois</label><input type="month" id="f-multi-from" value="' + esc(u.year + '-01') + '"></div>' +
+    '<div class="field"><label>au mois</label><input type="month" id="f-multi-to" value="' + esc(u.year + '-12') + '"></div>' +
+    '<button class="btn btn-sm" onclick="multiRange()">Cocher cette plage</button></div>';
+
+  /* 3. Option et aperçu */
+  html += '<h5 style="margin:16px 0 6px;font-size:13.5px;">3. Mois sans paiement enregistré</h5>';
+  if (ro) {
+    html += '<p style="font-size:13px;margin:0;">Compte en lecture seule : seules les quittances de paiements déjà enregistrés sont générées.</p>';
+  } else {
+    html += '<label style="display:flex;gap:8px;align-items:flex-start;font-size:13.5px;cursor:pointer;"><input type="checkbox" id="f-multi-creer"' + (u.creer ? ' checked' : '') + ' onchange="multiSetCreer(this.checked)" style="margin-top:3px;"> ' +
+      '<span>Enregistrer ces mois comme <strong>payés en entier, en espèces, à la date du jour</strong>, puis générer leur quittance.</span></label>' +
+      '<p style="color:var(--ink-faint);font-size:12px;margin:6px 0 0 24px;">Laissez décoché pour ignorer les mois sans paiement. Cochez seulement si les loyers ont réellement été reçus.</p>';
+  }
+  html += '<div class="form-actions"><button class="btn btn-primary" onclick="multiPrepare()">Vérifier la sélection</button></div>';
+
+  if (u.preview) {
+    var items = multiItems(), nE = 0, nC = 0, nI = 0;
+    items.forEach(function (i) { if (i.status === 'existant') nE++; else if (i.status === 'creer') nC++; else nI++; });
+    var total = nE + nC;
+    html += '<div id="multi-preview" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;">' +
+      '<p style="font-size:13.5px;margin:0 0 8px;"><strong>' + total + ' quittance(s) à générer</strong> : ' + nE + ' déjà payée(s), ' + nC + ' à créer comme payée(s), ' + nI + ' ignorée(s) faute de paiement.</p>';
+    if (total > MULTI_MAX) html += '<p style="color:var(--red);font-size:13px;margin:0 0 8px;">Limite de ' + MULTI_MAX + ' quittances par génération : réduisez la sélection.</p>';
+    html += '<div class="table-wrap" style="max-height:300px;overflow:auto;"><table><tr><th>Locataire</th><th>Maison</th><th>Mois</th><th>Situation</th><th class="num">Montant</th></tr>';
+    items.forEach(function (i) {
+      var sit, amt;
+      if (i.status === 'existant') { sit = '<span class="badge badge-green">Paiement enregistré</span>'; amt = fmtMoney(i.p.montantPaye); }
+      else if (i.status === 'creer') { sit = '<span class="badge badge-amber">Sera créé (loyer entier)</span>'; amt = fmtMoney(i.p && i.p.montantDu ? i.p.montantDu : i.m.loyer); }
+      else { sit = '<span class="badge badge-red">Ignoré</span>'; amt = '—'; }
+      html += '<tr><td>' + esc(i.m.locataireNom || i.m.locataireId) + ' <span class="maison-sub">' + esc(i.m.locataireId) + '</span></td><td>' + esc(i.c.nom) + ' · ' + esc(i.m.nom) + '</td><td>' + esc(monthLabel(i.periode)) + '</td><td>' + sit + '</td><td class="num">' + amt + '</td></tr>';
+    });
+    html += '</table></div>';
+    if (total > 0 && total <= MULTI_MAX) {
+      html += '<div class="form-actions" style="flex-wrap:wrap;"><button class="btn btn-primary" onclick="multiGenerate(\'pdf\')">Télécharger les ' + total + ' quittance(s) en PDF</button>' +
+        '<button class="btn" onclick="multiGenerate(\'print\')">Imprimer</button></div>';
+    } else if (total === 0) {
+      html += '<p style="color:var(--ink-soft);font-size:13px;margin:8px 0 0;">Aucune quittance à générer : aucun des mois choisis n\'a de paiement enregistré, ou le logement n\'a pas de locataire.</p>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* ---- Historique : filtres par mois et par locataire, impression en série ---- */
+function histState() {
+  if (!ui.hist) ui.hist = { mois: '', loc: '' };
+  return ui.hist;
+}
+function histAllRows() {
+  var rows = [];
+  scopedCours().forEach(function (c) {
+    c.maisons.forEach(function (m) {
+      (m.paiements || []).forEach(function (p) { if (Number(p.montantPaye) > 0) rows.push({ cour: c, maison: m, p: p }); });
+    });
+  });
+  rows.sort(function (a, b) {
+    return (b.p.periode || '').localeCompare(a.p.periode || '') ||
+      String(a.maison.locataireId || a.maison.nom).localeCompare(String(b.maison.locataireId || b.maison.nom), 'fr', { numeric: true });
+  });
+  return rows;
+}
+function histFilter(rows) {
+  var h = histState();
+  return rows.filter(function (r) { return (!h.mois || r.p.periode === h.mois) && (!h.loc || r.maison.id === h.loc); });
+}
+function histSet(k, v) { histState()[k] = v; persistUi(); render(); }
+function renderHistFilters(all) {
+  var h = histState(), months = {}, locs = {};
+  all.forEach(function (r) { months[r.p.periode] = 1; locs[r.maison.id] = r.maison; });
+  if (h.mois && !months[h.mois]) h.mois = '';
+  if (h.loc && !locs[h.loc]) h.loc = '';
+  var sel = 'style="border:1px solid var(--line);background:var(--paper-raised);color:var(--ink);border-radius:3px;padding:7px 8px;width:100%;"';
+  return '<div class="grid2" style="margin-bottom:10px;"><div class="field"><label>Filtrer par mois</label><select ' + sel + ' onchange="histSet(\'mois\',this.value)"><option value="">Tous les mois</option>' +
+    Object.keys(months).sort().reverse().map(function (k) { return '<option value="' + k + '"' + (h.mois === k ? ' selected' : '') + '>' + esc(monthLabel(k)) + '</option>'; }).join('') + '</select></div>' +
+    '<div class="field"><label>Filtrer par locataire</label><select ' + sel + ' onchange="histSet(\'loc\',this.value)"><option value="">Tous les locataires</option>' +
+    Object.keys(locs).sort(function (x, y) {
+      return String(locs[x].locataireId || locs[x].nom).localeCompare(String(locs[y].locataireId || locs[y].nom), 'fr', { numeric: true });
+    }).map(function (k) {
+      var m = locs[k];
+      return '<option value="' + k + '"' + (h.loc === k ? ' selected' : '') + '>' + esc((m.locataireId || m.nom) + ' — ' + (m.locataireNom || 'sans nom')) + '</option>';
+    }).join('') + '</select></div></div>';
+}
+function renderHistActions(n) {
+  if (n < 1) return '<div class="empty-hint">Aucune quittance pour ce filtre.</div>';
+  if (n < 2) return '';
+  return '<div class="form-actions" style="flex-wrap:wrap;"><button class="btn btn-primary" onclick="histPrint(\'pdf\')">Télécharger ces ' + n + ' quittances en PDF</button>' +
+    '<button class="btn" onclick="histPrint(\'print\')">Imprimer ces ' + n + ' quittances</button></div>' +
+    '<p style="color:var(--ink-faint);font-size:12px;margin:6px 0 0;">Une quittance par page, une par locataire et par mois.</p>';
+}
+async function histPrint(mode) {
+  var rows = histFilter(histAllRows());
+  if (!rows.length) return;
+  var ro = isReadOnly(), changed = false;
+  var out = rows.map(function (r) {
+    var p = r.p;
+    if (ro) return { cour: r.cour, maison: r.maison, p: Object.assign({}, p, { numeroQuittance: quittanceNumberFor(p) }) };
+    if (!p.numeroQuittance) { ensureQuittanceNumber(p); changed = true; }
+    return { cour: r.cour, maison: r.maison, p: p };
+  });
+  if (changed) await save();
+  if (mode === 'pdf') {
+    var doc = buildQuittancesPdf(out);
+    if (!doc) { alert('Le générateur PDF n\'a pas pu se charger. Vérifiez la connexion internet puis réessayez.'); return; }
+    await saveBlob('quittances-' + todayISO() + '.pdf', doc.output('blob'));
+  } else {
+    var html = buildReceiptsStandaloneHtml(out), w = null;
+    try { w = window.open('', '_blank'); } catch (e) { w = null; }
+    if (w && !w.closed) { w.document.open(); w.document.write(html); w.document.close(); }
+    else alert('La fenêtre d\'impression a été bloquée par le navigateur. Autorisez les pop-ups pour ce site, ou utilisez « Télécharger en PDF ».');
+  }
 }
 
 /* ===================== RENDU : TOPBAR ===================== */
@@ -2957,12 +3357,16 @@ function renderQuittancesTab() {
     '<p style="color:var(--ink-faint);font-size:12px;margin:10px 0 0;">Choisissez le locataire dans la liste (ID, nom, cour et maison).</p>' +
     '</div>';
 
+  html += renderMultiQuittances();
+
   if (!rows.length) {
     html += '<div class="empty-hint" style="margin-top:16px;">Aucun paiement encaissé pour le moment. Les quittances apparaîtront ici dès qu\'un loyer sera enregistré comme payé.</div>';
     return html;
   }
   rows.sort(function (a, b) { return (b.p.periode || '').localeCompare(a.p.periode || ''); });
+  var allRows = rows; rows = histFilter(rows);
   html += '<div class="section-head" style="margin-top:24px;"><h3>Historique des quittances</h3></div>';
+  html += renderHistFilters(allRows);
   html += '<div class="table-wrap"><table><tr><th>N&deg;</th><th>Mois</th><th>Cour</th><th>Maison</th><th>Locataire</th><th class="num">Montant</th><th></th></tr>';
   rows.forEach(function (r) {
     html += '<tr><td>' + esc(r.p.numeroQuittance || '—') + '</td><td>' + esc(monthLabel(r.p.periode)) + '</td>' +
@@ -2971,6 +3375,7 @@ function renderQuittancesTab() {
       '<td class="row-actions"><button class="btn btn-sm" onclick="openQuittance(\'' + r.maison.id + '\',\'' + r.p.id + '\')">Voir / imprimer</button></td></tr>';
   });
   html += '</table></div>';
+  html += renderHistActions(rows.length);
   return html;
 }
 
