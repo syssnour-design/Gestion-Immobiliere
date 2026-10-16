@@ -707,6 +707,7 @@ async function save() {
       try {
         await claudeArtifact.publish(await buildPublishHtml());
         SEC.snapshot = JSON.stringify(state);
+        autoBackup();
       } catch (e) {
         if (e && e.code === 'conflict') { /* la vue va se recharger */ }
         else {
@@ -722,6 +723,7 @@ async function save() {
     try {
       localStorage.setItem(LOCAL_KEY, await sealState());
       SEC.snapshot = JSON.stringify(state);
+      autoBackup();
     } catch (e) {
       ui.savedFlag = 'Sauvegarde locale impossible dans ce navigateur — modifications non conservées après fermeture.';
       render();
@@ -2284,6 +2286,247 @@ function attachDatalists() {
   box.innerHTML = html;
 }
 
+/* ===================== SAUVEGARDE ET RESTAURATION ===================== */
+/* Le fichier de sauvegarde contient les données chiffrées avec la même clé que l'application :
+   il ne peut être ouvert qu'avec un compte de l'application. Les comptes actuels ne sont jamais
+   modifiés par une restauration (seules les données de gestion sont remplacées). */
+var BK_FORMAT = 'registre-immobilier-sauvegarde';
+var BK_LAST_KEY = 'registre-immobilier-lastbackup';
+var BK_AUTO_KEY = 'registre-immobilier-autobackups-v1';
+var BK_AUTO_MAX = 5;
+var BK = { pending: null, err: '', msg: '', needPw: false, confirming: false, busy: false, fname: '' };
+
+function bkPad(n) { return (n < 10 ? '0' : '') + n; }
+function bkStamp(d) {
+  return d.getFullYear() + '-' + bkPad(d.getMonth() + 1) + '-' + bkPad(d.getDate()) + '_' + bkPad(d.getHours()) + bkPad(d.getMinutes());
+}
+function bkWhen(iso) {
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return bkPad(d.getDate()) + '/' + bkPad(d.getMonth() + 1) + '/' + d.getFullYear() + ' à ' + bkPad(d.getHours()) + ':' + bkPad(d.getMinutes());
+}
+function bkSummary(st) {
+  var r = { proprietaires: (st.proprietaires || []).length, cours: 0, maisons: 0, paiements: 0, depenses: 0 };
+  (st.cours || []).forEach(function (c) {
+    r.cours++;
+    r.depenses += (c.depenses || []).length;
+    (c.maisons || []).forEach(function (m) {
+      r.maisons++;
+      r.paiements += (m.paiements || []).length;
+      r.depenses += (m.depenses || []).length;
+    });
+  });
+  return r;
+}
+function bkSumText(r) {
+  return r.proprietaires + ' propriétaire(s), ' + r.cours + ' cour(s), ' + r.maisons + ' maison(s), ' + r.paiements + ' paiement(s), ' + r.depenses + ' dépense(s)';
+}
+function bkIsEmpty(st) { return !(st.cours || []).length && !(st.proprietaires || []).length; }
+
+/* Chiffre l'état courant sans modifier SEC.blob. */
+async function bkSeal() {
+  var iv = rnd(12);
+  var ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, SEC.session.key, _enc.encode(JSON.stringify(state)));
+  return { v: 2, acces: SEC.acces, iv: b64e(iv), ct: b64e(ct) };
+}
+async function bkDecrypt(blob, raw) {
+  var key = await importDek(raw);
+  var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(blob.iv) }, key, b64d(blob.ct));
+  return JSON.parse(_dec.decode(pt));
+}
+function bkValid(st) {
+  return !!st && typeof st === 'object' && Array.isArray(st.cours) && (st.proprietaires === undefined || Array.isArray(st.proprietaires));
+}
+
+/* ---- Téléchargement ---- */
+async function downloadBackup() {
+  if (!SEC.session || BK.busy) return;
+  BK.busy = true; BK.err = ''; BK.msg = '';
+  try {
+    var env = { format: BK_FORMAT, version: 1, date: new Date().toISOString(), par: SEC.session.nom, resume: bkSummary(state), donnees: await bkSeal() };
+    var name = 'registre-immobilier-sauvegarde-' + bkStamp(new Date()) + '.json';
+    var ok = await saveBlob(name, new Blob([JSON.stringify(env)], { type: 'application/json' }));
+    if (ok) {
+      try { localStorage.setItem(BK_LAST_KEY, env.date); } catch (e) {}
+      BK.msg = 'Sauvegarde téléchargée : ' + name + '. Conservez-la hors de cet appareil (clé USB, e-mail, cloud).';
+    }
+  } catch (e) { BK.err = 'La sauvegarde a échoué. Réessayez.'; }
+  BK.busy = false;
+  render();
+}
+
+/* ---- Copies automatiques (ce navigateur) ---- */
+function bkAutoList() {
+  try { var l = JSON.parse(localStorage.getItem(BK_AUTO_KEY) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; }
+}
+async function autoBackup(force, motif) {
+  try {
+    if (!SEC.session || isReadOnly()) return;
+    if (!force && bkIsEmpty(state)) return;
+    var list = bkAutoList();
+    if (!force && list.length && Date.now() - Date.parse(list[0].date) < 12 * 3600 * 1000) return;
+    list.unshift({ date: new Date().toISOString(), par: SEC.session.nom, motif: motif || 'automatique', resume: bkSummary(state), donnees: await bkSeal() });
+    list = list.slice(0, BK_AUTO_MAX);
+    for (var i = 0; i < 4; i++) {
+      try { localStorage.setItem(BK_AUTO_KEY, JSON.stringify(list)); return; }
+      catch (e) { if (list.length <= 1) return; list.pop(); }
+    }
+  } catch (e) {}
+}
+
+/* ---- Restauration ---- */
+function pickBackupFile() { var el = document.getElementById('bk-file'); if (el) el.click(); }
+async function bkInspect(obj, meta) {
+  var blob = null, plain = null;
+  if (obj && obj.format === BK_FORMAT && obj.donnees && obj.donnees.ct) { blob = obj.donnees; meta = { date: obj.date, par: obj.par }; }
+  else if (obj && obj.v === 2 && obj.ct) { blob = obj; }
+  else if (obj && Array.isArray(obj.cours)) { plain = obj; }
+  else throw new Error('format');
+  meta = meta || {};
+  BK.pending = null; BK.needPw = false; BK.confirming = false;
+  if (plain) {
+    if (!bkValid(plain)) throw new Error('format');
+    BK.pending = { state: plain, date: meta.date || '', par: meta.par || '', resume: bkSummary(plain) };
+    return;
+  }
+  var st = null;
+  try { st = await bkDecrypt(blob, SEC.session.dekRaw); } catch (e) { st = null; }
+  if (st) {
+    if (!bkValid(st)) throw new Error('format');
+    BK.pending = { state: st, date: meta.date || '', par: meta.par || '', resume: bkSummary(st) };
+  } else {
+    BK.pending = { blob: blob, date: meta.date || '', par: meta.par || '' };
+    BK.needPw = true;
+  }
+}
+async function onBackupFile(input) {
+  var f = input.files && input.files[0];
+  if (!f || !isAdmin()) return;
+  BK.err = ''; BK.msg = ''; BK.fname = f.name;
+  try {
+    var obj = JSON.parse(await f.text());
+    await bkInspect(obj);
+  } catch (e) {
+    BK.pending = null; BK.needPw = false;
+    BK.err = 'Ce fichier n\'est pas une sauvegarde valide du Registre Immobilier.';
+  }
+  try { input.value = ''; } catch (e) {}
+  render();
+}
+async function bkUnlock() {
+  if (!BK.pending || !BK.pending.blob || BK.busy) return;
+  BK.busy = true; BK.err = '';
+  var login = normLogin(gv('bk-login')), pw = gv('bk-pw');
+  try {
+    var acc = (BK.pending.blob.acces || []).filter(function (a) { return a.login === login; })[0];
+    if (!acc) throw new Error('inconnu');
+    var st = await bkDecrypt(BK.pending.blob, await unwrap(acc, pw));
+    if (!bkValid(st)) throw new Error('format');
+    BK.pending = { state: st, date: BK.pending.date, par: BK.pending.par, resume: bkSummary(st) };
+    BK.needPw = false;
+  } catch (e) { BK.err = 'Identifiant ou mot de passe de la sauvegarde incorrect.'; }
+  BK.busy = false;
+  render();
+}
+function restoreFromAuto(i) {
+  if (!isAdmin()) return;
+  var e = bkAutoList()[i];
+  if (!e) return;
+  BK.err = ''; BK.msg = ''; BK.fname = 'copie automatique du ' + bkWhen(e.date);
+  bkInspect({ format: BK_FORMAT, donnees: e.donnees, date: e.date, par: e.par }).then(render, function () {
+    BK.pending = null; BK.err = 'Cette copie est illisible.'; render();
+  });
+}
+function bkCancel() { BK.pending = null; BK.needPw = false; BK.confirming = false; BK.err = ''; render(); }
+function askRestore() { BK.confirming = true; render(); }
+async function doRestore() {
+  if (!isAdmin() || !BK.pending || !BK.pending.state || BK.busy) return;
+  BK.busy = true;
+  try {
+    await autoBackup(true, 'avant restauration');
+    var keep = state.utilisateurs;
+    var nu = JSON.parse(JSON.stringify(BK.pending.state));
+    nu.utilisateurs = keep;
+    state = nu; normalizeState();
+    var r = BK.pending.resume;
+    BK.pending = null; BK.confirming = false; BK.err = '';
+    BK.busy = false;
+    await save();
+    BK.msg = 'Données restaurées : ' + bkSumText(r) + '. Les comptes et mots de passe actuels ont été conservés.';
+  } catch (e) { BK.err = 'La restauration a échoué.'; }
+  BK.busy = false;
+  render();
+}
+
+/* ---- Affichage ---- */
+function renderSauvegarde() {
+  var admin = isAdmin();
+  var html = '<div class="section-head"><h2>Sauvegarde et restauration</h2></div>';
+  if (BK.msg) html += '<div class="form-box" style="margin-top:0;border-color:var(--green,#2f6b3a);"><strong>' + esc(BK.msg) + '</strong></div>';
+  if (BK.err) html += '<div class="form-box" style="margin-top:0;border-color:var(--red);color:var(--red);"><strong>' + esc(BK.err) + '</strong></div>';
+
+  var last = ''; try { last = localStorage.getItem(BK_LAST_KEY) || ''; } catch (e) {}
+  var days = last ? Math.floor((Date.now() - Date.parse(last)) / 86400000) : null;
+  var cur = bkSummary(state);
+  var status = !last ? '<span style="color:var(--red);">Aucune sauvegarde téléchargée depuis ce navigateur.</span>'
+    : (days > 7 ? '<span style="color:var(--red);">Dernière sauvegarde téléchargée il y a ' + days + ' jours (' + esc(bkWhen(last)) + ').</span>'
+      : 'Dernière sauvegarde téléchargée : ' + esc(bkWhen(last)) + '.');
+
+  html += '<div class="form-box" style="margin-top:0;"><h4 style="margin-bottom:8px;">1. Sauvegarder mes données</h4>' +
+    '<p style="font-size:13.5px;margin:0 0 6px;">Données actuelles : ' + esc(bkSumText(cur)) + '.</p>' +
+    '<p style="font-size:13.5px;margin:0 0 10px;">' + status + '</p>' +
+    '<div class="form-actions" style="flex-wrap:wrap;"><button class="btn btn-primary" onclick="downloadBackup()">&#128190; Télécharger une sauvegarde</button>' +
+    '<button class="btn" onclick="exportExcel()">Exporter en Excel (lecture)</button></div>' +
+    '<p style="color:var(--ink-faint);font-size:12px;margin:10px 0 0;">Le fichier de sauvegarde (.json) est chiffré : seul un compte de l\'application peut l\'ouvrir. L\'export Excel sert à consulter les données ; seule la sauvegarde permet de restaurer.</p></div>';
+
+  html += '<div class="form-box"><h4 style="margin-bottom:8px;">2. Restaurer une sauvegarde</h4>';
+  if (!admin) {
+    html += '<p style="font-size:13.5px;margin:0;">Réservé aux administrateurs.</p>';
+  } else {
+    html += '<p style="font-size:13.5px;margin:0 0 10px;">Choisissez un fichier de sauvegarde. Vous pourrez vérifier son contenu avant de remplacer les données actuelles.</p>' +
+      '<input type="file" id="bk-file" accept=".json,application/json" style="display:none;" onchange="onBackupFile(this)">' +
+      '<button class="btn" onclick="pickBackupFile()">Choisir un fichier de sauvegarde…</button>';
+    var p = BK.pending;
+    if (p && BK.needPw) {
+      html += '<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;"><p style="font-size:13.5px;margin:0 0 8px;"><strong>' + esc(BK.fname) + '</strong> a été chiffré avec d\'autres comptes. Saisissez l\'identifiant et le mot de passe d\'un compte qui existait dans cette sauvegarde.</p>' +
+        '<div class="grid2"><div class="field"><label>Identifiant</label><input type="text" id="bk-login" autocapitalize="none" autocomplete="off"></div>' +
+        '<div class="field"><label>Mot de passe</label><input type="password" id="bk-pw" autocomplete="off"' + enterKey('bkUnlock') + '></div></div>' +
+        '<div class="form-actions"><button class="btn btn-primary" onclick="bkUnlock()">Ouvrir la sauvegarde</button><button class="btn btn-ghost" onclick="bkCancel()">Annuler</button></div></div>';
+    } else if (p && p.state) {
+      var r = p.resume, less = r.maisons < cur.maisons || r.paiements < cur.paiements || r.cours < cur.cours;
+      html += '<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px;"><p style="font-size:13.5px;margin:0 0 8px;"><strong>Contenu de la sauvegarde</strong>' + (BK.fname ? ' (' + esc(BK.fname) + ')' : '') + (p.date ? ' &middot; créée le ' + esc(bkWhen(p.date)) : '') + (p.par ? ' par ' + esc(p.par) : '') + '</p>' +
+        '<div class="table-wrap"><table><tr><th></th><th>Propriétaires</th><th>Cours</th><th>Maisons</th><th>Paiements</th><th>Dépenses</th></tr>' +
+        '<tr><td>Sauvegarde</td><td>' + r.proprietaires + '</td><td>' + r.cours + '</td><td>' + r.maisons + '</td><td>' + r.paiements + '</td><td>' + r.depenses + '</td></tr>' +
+        '<tr><td>Données actuelles</td><td>' + cur.proprietaires + '</td><td>' + cur.cours + '</td><td>' + cur.maisons + '</td><td>' + cur.paiements + '</td><td>' + cur.depenses + '</td></tr></table></div>';
+      if (less) html += '<p style="color:var(--red);font-size:13px;margin:8px 0 0;"><strong>Attention :</strong> cette sauvegarde contient moins d\'éléments que vos données actuelles. Les saisies plus récentes seront perdues.</p>';
+      if (BK.confirming) {
+        html += '<p style="font-size:13.5px;margin:12px 0 8px;"><strong>Remplacer les données actuelles par cette sauvegarde ?</strong> Une copie des données actuelles est d\'abord conservée dans les copies automatiques ci-dessous.</p>' +
+          '<div class="form-actions"><button class="btn btn-danger" onclick="doRestore()">Oui, remplacer les données</button><button class="btn btn-ghost" onclick="bkCancel()">Annuler</button></div>';
+      } else {
+        html += '<div class="form-actions" style="margin-top:12px;"><button class="btn btn-primary" onclick="askRestore()">Restaurer ces données</button><button class="btn btn-ghost" onclick="bkCancel()">Annuler</button></div>';
+      }
+      html += '<p style="color:var(--ink-faint);font-size:12px;margin:10px 0 0;">Seules les données de gestion sont remplacées. Les comptes et mots de passe actuels restent inchangés.</p></div>';
+    }
+  }
+  html += '</div>';
+
+  var auto = bkAutoList();
+  html += '<div class="form-box"><h4 style="margin-bottom:8px;">3. Copies automatiques de ce navigateur</h4>' +
+    '<p style="font-size:13px;margin:0 0 10px;">L\'application garde en mémoire les ' + BK_AUTO_MAX + ' dernières copies (une par demi-journée de travail, et une avant chaque restauration). Elles restent sur cet appareil : elles ne remplacent pas une sauvegarde téléchargée.</p>';
+  if (!auto.length) {
+    html += '<p style="font-size:13px;margin:0;color:var(--ink-faint);">Aucune copie pour l\'instant.</p>';
+  } else {
+    html += '<div class="table-wrap"><table><tr><th>Date</th><th>Origine</th><th>Contenu</th><th></th></tr>';
+    auto.forEach(function (e, i) {
+      html += '<tr><td>' + esc(bkWhen(e.date)) + '</td><td>' + esc(e.motif || '') + (e.par ? ' <span class="maison-sub">(' + esc(e.par) + ')</span>' : '') + '</td><td>' + esc(bkSumText(e.resume || { proprietaires: 0, cours: 0, maisons: 0, paiements: 0, depenses: 0 })) + '</td><td style="text-align:right;white-space:nowrap;">' +
+        (admin ? '<button class="btn btn-sm" onclick="restoreFromAuto(' + i + ')">Restaurer</button>' : '') + '</td></tr>';
+    });
+    html += '</table></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
 /* ===================== RENDU : TOPBAR ===================== */
 function renderTopbar() {
   var ownerOptions = '<option value="all"' + (ui.filterProprietaire === 'all' ? ' selected' : '') + '>Tous les propriétaires</option>' +
@@ -2306,6 +2549,7 @@ function renderTopbar() {
         tabBtn('quittances', 'Quittances') +
         tabBtn('relances', 'Relances' + relanceBadge()) +
         tabBtn('etats', 'États') +
+        tabBtn('sauvegarde', 'Sauvegarde') +
         tabBtn('acces', 'Accès') +
       '</div>' +
     '</div>';
@@ -2803,6 +3047,7 @@ function render() {
   else if (ui.tab === 'registre') content = renderRegistre();
   else if (ui.tab === 'relances') content = renderRelances();
   else if (ui.tab === 'etats') content = renderEtats();
+  else if (ui.tab === 'sauvegarde') content = renderSauvegarde();
   else if (ui.tab === 'acces') content = renderAcces();
   else content = renderQuittancesTab();
 
