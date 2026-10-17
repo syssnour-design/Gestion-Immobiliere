@@ -917,7 +917,9 @@ function submitAddPaiement(maisonId) {
 function deletePaiement(maisonId, payId) {
   var found = findMaison(maisonId);
   if (!found) return;
-  if (!confirm('Supprimer ce paiement ?')) return;
+  var nl_ = depLinked(found.maison, { id: payId }).length;
+  if (!confirm('Supprimer ce paiement ?' + (nl_ ? ' ' + nl_ + ' dépense(s) liée(s) seront conservées mais détachées de cette quittance.' : ''))) return;
+  lienUnlinkPay(found.maison, payId);
   found.maison.paiements = found.maison.paiements.filter(function (x) { return x.id !== payId; });
   save();
 }
@@ -933,6 +935,7 @@ function submitAddDepense(scope, ownerId) {
     id: uid('depense'), type: val('f-dep-type') || 'Autre', date: val('f-dep-date') || todayISO(), description: desc,
     montant: numVal('f-dep-montant'), prestataire: val('f-dep-prestataire'), statut: val('f-dep-statut') || 'À prévoir'
   };
+  var lk0 = depLienVal('f-dep-pay', scope); if (lk0) r.paiementId = lk0;
   if (scope === 'generale') {
     var c = findCour(ownerId);
     if (!c) return;
@@ -1007,7 +1010,7 @@ function buildReceiptStandaloneHtml(c, m, p, montantMots) {
     '<table>' + rows + '</table>' +
     '<div class="amount-box"><div>Montant re&ccedil;u</div><div class="big">' + fmtMoney(p.montantPaye) + '</div>' +
     '<div class="amount-note">Arr&ecirc;t&eacute;e la pr&eacute;sente quittance &agrave; la somme de&nbsp;: ' + esc(montantMots) + '.</div></div>' +
-    '<div class="sigs"><div>Signature du bailleur</div><div>Signature du locataire</div></div>' +
+    receiptDepBlock(m, p) + '<div class="sigs"><div>Signature du bailleur</div><div>Signature du locataire</div></div>' +
     '<script>window.onload=function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},150);};</' + 'script>' +
     '</body></html>';
 }
@@ -1087,13 +1090,13 @@ async function exportExcel() {
           "Date d'échéance": p.dateEcheance, 'Date de paiement': p.datePaiement,
           'Montant dû (FCFA)': p.montantDu, 'Montant payé (FCFA)': p.montantPaye,
           'Mode de paiement': p.mode, 'Statut': p.montantPaye >= p.montantDu && p.montantDu > 0 ? 'Payé' : (p.montantPaye > 0 ? 'Partiel' : 'Impayé'),
-          'N° Quittance': p.numeroQuittance || '', 'Observations': p.note
+          'N° Quittance': p.numeroQuittance || '', 'Observations': p.note, 'Dépenses liées (FCFA)': depLinkedTotal(m, p)
         });
       });
       m.depenses.forEach(function (r) {
         depensesRows.push({
           'Propriétaire': ownerName, 'Cour': c.nom, 'Maison': m.nom, 'Type': r.type || '', 'Date': r.date, 'Description': r.description,
-          'Montant (FCFA)': r.montant, 'Prestataire': r.prestataire, 'Statut': r.statut
+          'Montant (FCFA)': r.montant, 'Prestataire': r.prestataire, 'Statut': r.statut, 'Quittance liée': (function () { var q = (m.paiements || []).find(function (x) { return x.id === r.paiementId; }); return q ? (q.numeroQuittance || '') + ' ' + monthLabel(q.periode) : ''; })()
         });
       });
     });
@@ -1105,8 +1108,8 @@ async function exportExcel() {
     XLSX.utils.book_append_sheet(wb, ws, name);
   }
   addSheet(maisonsRows, 'Maisons', ['Propriétaire','ID','ID Locataire','Cour','Maison','Type','Pièces','Superficie (m²)','Équipements','Localisation','Loyer mensuel (FCFA)','Locataire','Téléphone',"Date d'entrée"]);
-  addSheet(paiementsRows, 'Loyers', ['Propriétaire','Cour','Maison','Locataire','Mois concerné',"Date d'échéance",'Date de paiement','Montant dû (FCFA)','Montant payé (FCFA)','Mode de paiement','Statut','N° Quittance','Observations']);
-  addSheet(depensesRows, 'Dépenses', ['Propriétaire','Cour','Maison','Type','Date','Description','Montant (FCFA)','Prestataire','Statut']);
+  addSheet(paiementsRows, 'Loyers', ['Propriétaire','Cour','Maison','Locataire','Mois concerné',"Date d'échéance",'Date de paiement','Montant dû (FCFA)','Montant payé (FCFA)','Mode de paiement','Statut','N° Quittance','Observations','Dépenses liées (FCFA)']);
+  addSheet(depensesRows, 'Dépenses', ['Propriétaire','Cour','Maison','Type','Date','Description','Montant (FCFA)','Prestataire','Statut','Quittance liée']);
 
   var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   var blob = new Blob([wbout], { type: 'application/octet-stream' });
@@ -1995,6 +1998,7 @@ function waMessageQuittance(found, p) {
   lines.push('• Montant reçu : *' + fmtNum(p.montantPaye) + ' FCFA* (' + numberToFrenchWords(p.montantPaye).toLowerCase() + ' francs CFA)');
   if (p.datePaiement) lines.push('• Payé le : ' + fmtDateFR(p.datePaiement) + (p.mode ? ' (' + p.mode + ')' : ''));
   if (p.montantDu && p.montantPaye < p.montantDu) lines.push('• Reste à payer pour ce mois : ' + fmtNum(p.montantDu - p.montantPaye) + ' FCFA');
+  waDepLines(m, p).forEach(function (x) { lines.push(x); });
   lines.push('');
   lines.push('Merci de votre paiement.');
   lines.push('');
@@ -2045,7 +2049,8 @@ function drawQuittancePage(doc, found, p) {
   doc.text(pdfSafe(fmtNum(p.montantPaye) + ' FCFA'), ML + 5, y + 11, { baseline: 'top' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(101, 112, 100);
   doc.text(doc.splitTextToSize(pdfSafe('Arrêtée la présente quittance à la somme de : ' + numberToFrenchWords(p.montantPaye) + ' francs CFA.'), W - 10), ML + 5, y + 21, { baseline: 'top' });
-  y += 52;
+  y += 36;
+  y = pdfDepBlock(doc, m, p, ML, W, y) + 16;
   doc.setFontSize(10); doc.setTextColor(101, 112, 100);
   doc.text('Signature du bailleur', ML + 20, y + 14, { baseline: 'top' });
   doc.text('Signature du locataire', ML + W - 60, y + 14, { baseline: 'top' });
@@ -2751,7 +2756,7 @@ function buildReceiptsStandaloneHtml(list) {
       '<table>' + rows + '</table>' +
       '<div class="amount-box"><div>Montant re&ccedil;u</div><div class="big">' + fmtMoney(p.montantPaye) + '</div>' +
       '<div class="amount-note">Arr&ecirc;t&eacute;e la pr&eacute;sente quittance &agrave; la somme de&nbsp;: ' + esc(numberToFrenchWords(p.montantPaye) + ' francs CFA') + '.</div></div>' +
-      '<div class="sigs"><div>Signature du bailleur</div><div>Signature du locataire</div></div></section>';
+      receiptDepBlock(m, p) + '<div class="sigs"><div>Signature du bailleur</div><div>Signature du locataire</div></div></section>';
   }).join('');
   return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Quittances</title><style>' +
     'body{font-family:Arial,Helvetica,sans-serif;color:#1c231e;background:#fff;margin:0;}' +
@@ -2925,6 +2930,239 @@ async function histPrint(mode) {
     if (w && !w.closed) { w.document.open(); w.document.write(html); w.document.close(); }
     else alert('La fenêtre d\'impression a été bloquée par le navigateur. Autorisez les pop-ups pour ce site, ou utilisez « Télécharger en PDF ».');
   }
+}
+
+/* ===================== MODIFICATION : PAIEMENTS / QUITTANCES ET DÉPENSES ===================== */
+var EDIT = { pay: null, dep: null, err: '' };
+function _findPay(maisonId, payId) {
+  var f = findMaison(maisonId); if (!f) return null;
+  var p = (f.maison.paiements || []).find(function (x) { return x.id === payId; });
+  return p ? { found: f, p: p } : null;
+}
+function editPaiement(maisonId, payId, from) {
+  if (isReadOnly()) return;
+  if (!_findPay(maisonId, payId)) return;
+  EDIT.pay = { maisonId: maisonId, payId: payId }; EDIT.dep = null; EDIT.err = '';
+  ui.addingPaiementTo = null; ui.addingDepenseTo = null;
+  if (ui.printing) { ui.printing = null; document.body.classList.remove('print-mode'); }
+  if (from === 'q') ui.tab = 'quittances';
+  else { ui.openMaisons[maisonId] = true; var f = findMaison(maisonId); if (f) ui.openCours[f.cour.id] = true; ui.tab = 'registre'; }
+  persistUi(); render();
+  setTimeout(function () { var e = document.getElementById('edit-pay-box'); if (e && e.scrollIntoView) e.scrollIntoView({ block: 'center' }); }, 30);
+}
+function editPaiementCancel() { EDIT.pay = null; EDIT.err = ''; render(); }
+function editPaiementSave() {
+  if (isReadOnly() || !EDIT.pay) return;
+  var r = _findPay(EDIT.pay.maisonId, EDIT.pay.payId); if (!r) { EDIT.pay = null; render(); return; }
+  var m = r.found.maison, p = r.p;
+  var periode = val('f-ep-periode');
+  if (!periode) { EDIT.err = 'Le mois concerné est obligatoire.'; render(); return; }
+  var dup = (m.paiements || []).some(function (x) { return x.id !== p.id && x.periode === periode; });
+  if (dup) { EDIT.err = 'Un paiement existe déjà pour ' + monthLabel(periode) + ' sur cette maison.'; render(); return; }
+  var du = numVal('f-ep-du'), paye = numVal('f-ep-paye');
+  if (du < 0 || paye < 0) { EDIT.err = 'Les montants ne peuvent pas être négatifs.'; render(); return; }
+  var num = p.numeroQuittance;
+  var el = document.getElementById('f-ep-num');
+  if (el && !el.disabled) {
+    num = (el.value || '').trim() || null;
+    if (num && _allPaiements().some(function (x) { return x.id !== p.id && x.numeroQuittance === num; })) {
+      EDIT.err = 'Ce numéro de quittance est déjà utilisé par un autre paiement.'; render(); return;
+    }
+  }
+  p.periode = periode; p.dateEcheance = val('f-ep-echeance'); p.datePaiement = val('f-ep-date');
+  p.montantDu = du; p.montantPaye = paye; p.mode = val('f-ep-mode'); p.note = val('f-ep-note');
+  p.numeroQuittance = num; p.dateModif = todayISO();
+  lienPayApply(m, p);
+  m.paiements.sort(function (a, b) { return (a.periode || '').localeCompare(b.periode || ''); });
+  EDIT.pay = null; EDIT.err = '';
+  save();
+}
+function renderEditPaiement(maisonId) {
+  if (!EDIT.pay || (maisonId && EDIT.pay.maisonId !== maisonId)) return '';
+  var r = _findPay(EDIT.pay.maisonId, EDIT.pay.payId); if (!r) return '';
+  var p = r.p, m = r.found.maison;
+  return '<div class="form-box" id="edit-pay-box" style="border-color:var(--brass);"><h4 style="margin-bottom:8px;">Modifier le paiement — ' + esc(m.nom) + (m.locataireNom ? ' (' + esc(m.locataireNom) + ')' : '') + '</h4>' +
+    (EDIT.err ? '<div style="color:var(--red);font-size:13px;margin-bottom:8px;">' + esc(EDIT.err) + '</div>' : '') +
+    '<div class="grid3">' +
+    field('Mois concerné (AAAA-MM) *', 'month', 'f-ep-periode', p.periode) +
+    field("Date d'échéance", 'date', 'f-ep-echeance', p.dateEcheance || '') +
+    field('Date de paiement', 'date', 'f-ep-date', p.datePaiement || '') +
+    field('Montant dû (FCFA)', 'number', 'f-ep-du', p.montantDu) +
+    field('Montant payé (FCFA)', 'number', 'f-ep-paye', p.montantPaye) +
+    selectField('Mode de paiement', 'f-ep-mode', ['Espèces', 'Mobile Money', 'Virement', 'Chèque'], p.mode) +
+    '</div>' + field('Observation', 'text', 'f-ep-note', p.note || '') +
+    lienPayChecklist(m, p) +
+    '<div class="field"><label>N° de quittance' + (isAdmin() ? '' : ' (modifiable par un administrateur)') + '</label><input type="text" id="f-ep-num" value="' + esc(p.numeroQuittance || '') + '"' + (isAdmin() ? '' : ' disabled') + ' placeholder="Attribué à la première édition"></div>' +
+    '<p style="color:var(--ink-faint);font-size:12px;margin:6px 0 0;">La quittance affichée ou imprimée à nouveau reflétera ces valeurs. Les exemplaires déjà imprimés ou envoyés ne changent pas.</p>' +
+    '<div class="form-actions"><button class="btn btn-primary" onclick="editPaiementSave()">Enregistrer les modifications</button>' +
+    '<button class="btn btn-ghost" onclick="editPaiementCancel()">Annuler</button></div></div>';
+}
+
+function _findDep(scope, ownerId, depId) {
+  var list = null;
+  if (scope === 'generale') { var c = findCour(ownerId); list = c && c.depensesGenerales; }
+  else { var f = findMaison(ownerId); list = f && f.maison.depenses; }
+  var d = (list || []).find(function (x) { return x.id === depId; });
+  return d || null;
+}
+function editDepense(scope, ownerId, depId) {
+  if (isReadOnly() || !_findDep(scope, ownerId, depId)) return;
+  EDIT.dep = { scope: scope, id: ownerId, depId: depId }; EDIT.pay = null; EDIT.err = '';
+  ui.addingDepenseTo = null; ui.addingPaiementTo = null;
+  persistUi(); render();
+  setTimeout(function () { var e = document.getElementById('edit-dep-box'); if (e && e.scrollIntoView) e.scrollIntoView({ block: 'center' }); }, 30);
+}
+function editDepenseCancel() { EDIT.dep = null; EDIT.err = ''; render(); }
+function editDepenseSave() {
+  if (isReadOnly() || !EDIT.dep) return;
+  var d = _findDep(EDIT.dep.scope, EDIT.dep.id, EDIT.dep.depId);
+  if (!d) { EDIT.dep = null; render(); return; }
+  var desc = val('f-ed-desc');
+  if (!desc) { EDIT.err = 'La description de la dépense est obligatoire.'; render(); return; }
+  var mt = numVal('f-ed-montant');
+  if (mt < 0) { EDIT.err = 'Le montant ne peut pas être négatif.'; render(); return; }
+  d.type = val('f-ed-type') || 'Autre'; d.date = val('f-ed-date') || d.date || todayISO(); d.description = desc;
+  d.montant = mt; d.prestataire = val('f-ed-prestataire'); d.statut = val('f-ed-statut') || 'À prévoir'; d.dateModif = todayISO();
+  if (EDIT.dep.scope === 'maison') { var lk = depLienVal('f-ed-pay', 'maison'); if (lk) d.paiementId = lk; else delete d.paiementId; }
+  EDIT.dep = null; EDIT.err = '';
+  save();
+}
+function renderEditDepense(scope, ownerId) {
+  if (!EDIT.dep || EDIT.dep.scope !== scope || EDIT.dep.id !== ownerId) return '';
+  var d = _findDep(scope, ownerId, EDIT.dep.depId); if (!d) return '';
+  return '<div class="form-box" id="edit-dep-box" style="border-color:var(--brass);"><h4 style="margin-bottom:8px;">Modifier la dépense</h4>' +
+    (EDIT.err ? '<div style="color:var(--red);font-size:13px;margin-bottom:8px;">' + esc(EDIT.err) + '</div>' : '') +
+    '<div class="grid3">' +
+    selectField('Type de dépense *', 'f-ed-type', DEPENSE_TYPES, d.type) +
+    field('Date', 'date', 'f-ed-date', d.date || '') +
+    field('Montant (FCFA)', 'number', 'f-ed-montant', d.montant) +
+    '</div>' +
+    fieldTextarea('Description *', 'f-ed-desc', d.description) +
+    '<div class="grid2">' + selectField('Statut', 'f-ed-statut', ['À prévoir', 'En cours', 'Terminée', 'Payée'], d.statut) +
+    field('Prestataire / Bénéficiaire', 'text', 'f-ed-prestataire', d.prestataire || '') + '</div>' +
+    depLienField('f-ed-pay', scope, ownerId, d.paiementId || '') +
+    '<div class="form-actions"><button class="btn btn-primary" onclick="editDepenseSave()">Enregistrer les modifications</button>' +
+    '<button class="btn btn-ghost" onclick="editDepenseCancel()">Annuler</button></div></div>';
+}
+
+/* ===================== LIEN DÉPENSE ↔ QUITTANCE ===================== */
+function lienPays(m) {
+  return (m.paiements || []).filter(function (p) { return Number(p.montantPaye) > 0; })
+    .sort(function (a, b) { return (b.periode || '').localeCompare(a.periode || ''); });
+}
+function lienPayLabel(p) {
+  return (p.numeroQuittance ? 'N° ' + p.numeroQuittance + ' — ' : '') + monthLabel(p.periode) + ' — ' + fmtMoney(p.montantPaye);
+}
+function depLinked(m, p) { return (m.depenses || []).filter(function (d) { return d.paiementId === p.id; }); }
+function depLinkedTotal(m, p) { return depLinked(m, p).reduce(function (s, d) { return s + (Number(d.montant) || 0); }, 0); }
+function depQuittance(scope, ownerId, d) {
+  if (scope !== 'maison' || !d || !d.paiementId) return null;
+  var f = findMaison(ownerId); if (!f) return null;
+  return (f.maison.paiements || []).find(function (p) { return p.id === d.paiementId; }) || null;
+}
+function depLienField(idf, scope, ownerId, current) {
+  if (scope !== 'maison') return '';
+  var f = findMaison(ownerId); if (!f) return '';
+  var list = lienPays(f.maison);
+  if (current && !list.some(function (p) { return p.id === current; })) {
+    var cur = (f.maison.paiements || []).find(function (p) { return p.id === current; });
+    if (cur) list.push(cur);
+  }
+  var opts = '<option value="">— Aucune —</option>' + list.map(function (p) {
+    return '<option value="' + esc(p.id) + '"' + (p.id === current ? ' selected' : '') + '>' + esc(lienPayLabel(p)) + '</option>';
+  }).join('');
+  return '<div class="field"><label>Quittance liée (facultatif)</label><select id="' + idf + '">' + opts + '</select>' +
+    '<p style="color:var(--ink-faint);font-size:12px;margin:6px 0 0;">Rattache cette dépense à la quittance d\'un loyer encaissé de cette maison (ex : réparation à la charge du locataire).</p></div>';
+}
+function depLienVal(idf, scope) {
+  if (scope !== 'maison') return null;
+  var el = document.getElementById(idf);
+  return el && el.value ? el.value : null;
+}
+function depLienCell(scope, ownerId, d) {
+  var p = depQuittance(scope, ownerId, d);
+  if (!p) return '<td>' + (d.paiementId ? '<span style="color:var(--ink-faint);">introuvable</span>' : '—') + '</td>';
+  return '<td><span class="badge badge-amber" title="' + esc(lienPayLabel(p)) + '">' + esc(p.numeroQuittance ? 'N° ' + p.numeroQuittance : 'Quittance') + ' · ' + esc(monthLabel(p.periode)) + '</span></td>';
+}
+function payDepBadge(m, p) {
+  var n = depLinked(m, p).length;
+  if (!n) return '';
+  return '<div style="font-size:11.5px;color:var(--ink-faint);">' + n + ' dépense(s) liée(s) : ' + fmtMoney(depLinkedTotal(m, p)) + '</div>';
+}
+function lienPayChecklist(m, p) {
+  var ds = (m.depenses || []).slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
+  var h = '<div class="field"><label>Dépenses liées à cette quittance</label>';
+  if (!ds.length) return h + '<div style="color:var(--ink-faint);font-size:13px;">Aucune dépense enregistrée pour cette maison.</div></div>';
+  h += '<div style="border:1px solid var(--line);border-radius:6px;padding:6px 10px;max-height:200px;overflow:auto;">';
+  ds.forEach(function (d) {
+    var other = d.paiementId && d.paiementId !== p.id ? (m.paiements || []).find(function (x) { return x.id === d.paiementId; }) : null;
+    h += '<label style="display:flex;gap:8px;align-items:flex-start;font-weight:normal;font-size:13px;color:var(--ink);margin:5px 0;"><input type="checkbox" data-lienpay="' + esc(d.id) + '"' + (d.paiementId === p.id ? ' checked' : '') + ' style="margin-top:3px;width:auto;flex:none;">' +
+      '<span>' + esc(d.date || '') + ' — ' + esc(d.description) + ' — <strong>' + fmtMoney(d.montant) + '</strong>' +
+      (other ? ' <em style="color:var(--ink-faint);">(déjà liée à ' + esc(other.numeroQuittance ? 'N° ' + other.numeroQuittance : monthLabel(other.periode)) + ' : la cocher la déplace)</em>' : '') + '</span></label>';
+  });
+  return h + '</div></div>';
+}
+function lienPayApply(m, p) {
+  var boxes = document.querySelectorAll('input[data-lienpay]');
+  Array.prototype.forEach.call(boxes, function (b) {
+    var d = (m.depenses || []).find(function (x) { return x.id === b.getAttribute('data-lienpay'); });
+    if (!d) return;
+    if (b.checked) d.paiementId = p.id;
+    else if (d.paiementId === p.id) delete d.paiementId;
+  });
+}
+function lienUnlinkPay(m, payId) {
+  (m.depenses || []).forEach(function (d) { if (d.paiementId === payId) delete d.paiementId; });
+}
+
+/* ---- Affichage des dépenses liées SUR la quittance (écran, impression, PDF, WhatsApp) ---- */
+function receiptDepBlock(m, p) {
+  var ls = depLinked(m, p);
+  if (!ls.length) return '';
+  var td = 'padding:3px 0;border-bottom:1px solid #D7CFAE;color:#1c231e;vertical-align:top;';
+  var rows = ls.map(function (d) {
+    return '<tr><td style="' + td + '">' + esc(d.description) + (d.date ? ' <span style="color:#657064;">(' + esc(fmtDateFR(d.date)) + ')</span>' : '') + '</td>' +
+      '<td style="' + td + 'text-align:right;white-space:nowrap;">' + esc(fmtMoney(d.montant)) + '</td></tr>';
+  }).join('');
+  return '<div style="margin:14px 0;font-size:13px;color:#1c231e;"><div style="font-weight:700;margin-bottom:4px;">D&eacute;penses li&eacute;es &agrave; cette quittance</div>' +
+    '<table style="width:100%;font-size:13px;border-collapse:collapse;">' + rows +
+    '<tr><td style="padding:4px 0;font-weight:700;color:#1c231e;">Total des d&eacute;penses</td><td style="padding:4px 0;font-weight:700;text-align:right;white-space:nowrap;color:#1c231e;">' + esc(fmtMoney(depLinkedTotal(m, p))) + '</td></tr></table></div>';
+}
+function pdfDepBlock(doc, m, p, ML, W, y) {
+  var ls = depLinked(m, p);
+  if (!ls.length) return y;
+  var MAXR = 6;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(38, 49, 44);
+  doc.text('Dépenses liées à cette quittance', ML, y, { baseline: 'top' });
+  y += 7;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+  ls.slice(0, MAXR).forEach(function (d) {
+    var t = pdfSafe(d.description + (d.date ? ' (' + fmtDateFR(d.date) + ')' : ''));
+    var first = doc.splitTextToSize(t, W - 50)[0];
+    doc.setTextColor(38, 49, 44);
+    doc.text(first, ML, y, { baseline: 'top' });
+    doc.text(pdfSafe(fmtNum(d.montant) + ' FCFA'), ML + W, y, { baseline: 'top', align: 'right' });
+    doc.setDrawColor(215, 207, 174); doc.setLineWidth(0.2); doc.line(ML, y + 5.5, ML + W, y + 5.5);
+    y += 7;
+  });
+  if (ls.length > MAXR) {
+    doc.setTextColor(101, 112, 100);
+    doc.text(pdfSafe('… et ' + (ls.length - MAXR) + ' autre(s) dépense(s)'), ML, y, { baseline: 'top' });
+    y += 7;
+  }
+  doc.setFont('helvetica', 'bold'); doc.setTextColor(38, 49, 44);
+  doc.text('Total des dépenses', ML, y, { baseline: 'top' });
+  doc.text(pdfSafe(fmtNum(depLinkedTotal(m, p)) + ' FCFA'), ML + W, y, { baseline: 'top', align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  return y + 8;
+}
+function waDepLines(m, p) {
+  var ls = depLinked(m, p), out = [];
+  if (!ls.length) return out;
+  out.push('• Dépenses liées :');
+  ls.forEach(function (d) { out.push('   - ' + d.description + ' : ' + fmtNum(d.montant) + ' FCFA'); });
+  out.push('   Total des dépenses : *' + fmtNum(depLinkedTotal(m, p)) + ' FCFA*');
+  return out;
 }
 
 /* ===================== RENDU : TOPBAR ===================== */
@@ -3282,6 +3520,7 @@ function renderPaiementsBlock(m) {
       '<button class="btn btn-ghost" onclick="cancelAddPaiement()">Annuler</button></div></div>';
   }
 
+  html += renderEditPaiement(m.id);
   var rows = (m.paiements || []).slice().sort(function (a, b) { return (b.periode || '').localeCompare(a.periode || ''); });
   if (!rows.length) {
     html += '<div class="empty-hint">Aucun paiement enregistré.</div></div>';
@@ -3289,10 +3528,11 @@ function renderPaiementsBlock(m) {
   }
   html += '<div class="table-wrap"><table><tr><th>Mois</th><th>Échéance</th><th>Payé le</th><th class="num">Dû</th><th class="num">Payé</th><th>Mode</th><th>Statut</th><th></th></tr>';
   rows.forEach(function (p) {
-    html += '<tr><td>' + esc(monthLabel(p.periode)) + '</td><td>' + esc(p.dateEcheance || '—') + '</td><td>' + esc(p.datePaiement || '—') + '</td>' +
+    html += '<tr><td>' + esc(monthLabel(p.periode)) + payDepBadge(m, p) + '</td><td>' + esc(p.dateEcheance || '—') + '</td><td>' + esc(p.datePaiement || '—') + '</td>' +
       '<td class="num">' + fmtMoney(p.montantDu) + '</td><td class="num">' + fmtMoney(p.montantPaye) + '</td><td>' + esc(p.mode || '—') + '</td><td>' + statusBadge(p) + '</td>' +
       '<td class="row-actions">' +
       (p.montantPaye > 0 ? '<button class="btn btn-sm btn-ghost" onclick="openQuittance(\'' + m.id + '\',\'' + p.id + '\')">Quittance</button><button class="btn btn-sm btn-ghost" onclick="openWa(\'quittance\',\'' + m.id + '\',\'' + p.id + '\')">WhatsApp</button>' : '') +
+      '<button class="btn btn-sm btn-ghost" onclick="editPaiement(\'' + m.id + '\',\'' + p.id + '\')">Modifier</button>' +
       '<button class="btn btn-sm btn-danger" onclick="deletePaiement(\'' + m.id + '\',\'' + p.id + '\')">&times;</button></td></tr>';
   });
   html += '</table></div></div>';
@@ -3314,21 +3554,23 @@ function renderDepensesBlock(scope, ownerId, list, title) {
       fieldTextarea('Description *', 'f-dep-desc', '', 'Ex : Impôt foncier 2026, Réfection de la toiture, Prime assurance habitation') +
       '<div class="grid2">' + selectField('Statut', 'f-dep-statut', ['À prévoir', 'En cours', 'Terminée', 'Payée']) +
       field('Prestataire / Bénéficiaire', 'text', 'f-dep-prestataire', '', 'Ex : Direction Générale des Impôts') + '</div>' +
+      depLienField('f-dep-pay', scope, ownerId, '') +
       '<div class="form-actions"><button class="btn btn-primary" onclick="submitAddDepense(\'' + scope + '\',\'' + ownerId + '\')">Enregistrer</button>' +
       '<button class="btn btn-ghost" onclick="cancelAddDepense()">Annuler</button></div></div>';
   }
 
+  html += renderEditDepense(scope, ownerId);
   if (!list.length) {
     html += '<div class="empty-hint">Aucune dépense enregistrée.</div></div>';
     return html;
   }
   var sorted = list.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
-  html += '<div class="table-wrap"><table><tr><th>Date</th><th>Type</th><th>Description</th><th class="num">Montant</th><th>Prestataire</th><th>Statut</th><th></th></tr>';
+  html += '<div class="table-wrap"><table><tr><th>Date</th><th>Type</th><th>Description</th><th class="num">Montant</th><th>Prestataire</th><th>Statut</th><th>Quittance</th><th></th></tr>';
   sorted.forEach(function (r) {
     var badgeClass = (r.statut === 'Terminée' || r.statut === 'Payée') ? 'badge-green' : (r.statut === 'En cours' ? 'badge-amber' : 'badge-red');
     html += '<tr><td>' + esc(r.date || '—') + '</td><td>' + esc(r.type || 'Autre') + '</td><td>' + esc(r.description) + '</td><td class="num">' + fmtMoney(r.montant) + '</td>' +
-      '<td>' + esc(r.prestataire || '—') + '</td><td><span class="badge ' + badgeClass + '">' + esc(r.statut) + '</span></td>' +
-      '<td class="row-actions"><button class="btn btn-sm btn-danger" onclick="deleteDepense(\'' + scope + '\',\'' + ownerId + '\',\'' + r.id + '\')">&times;</button></td></tr>';
+      '<td>' + esc(r.prestataire || '—') + '</td><td><span class="badge ' + badgeClass + '">' + esc(r.statut) + '</span></td>' + depLienCell(scope, ownerId, r) +
+      '<td class="row-actions"><button class="btn btn-sm btn-ghost" onclick="editDepense(\'' + scope + '\',\'' + ownerId + '\',\'' + r.id + '\')">Modifier</button><button class="btn btn-sm btn-danger" onclick="deleteDepense(\'' + scope + '\',\'' + ownerId + '\',\'' + r.id + '\')">&times;</button></td></tr>';
   });
   html += '</table></div></div>';
   return html;
@@ -3366,13 +3608,14 @@ function renderQuittancesTab() {
   rows.sort(function (a, b) { return (b.p.periode || '').localeCompare(a.p.periode || ''); });
   var allRows = rows; rows = histFilter(rows);
   html += '<div class="section-head" style="margin-top:24px;"><h3>Historique des quittances</h3></div>';
+  html += renderEditPaiement();
   html += renderHistFilters(allRows);
   html += '<div class="table-wrap"><table><tr><th>N&deg;</th><th>Mois</th><th>Cour</th><th>Maison</th><th>Locataire</th><th class="num">Montant</th><th></th></tr>';
   rows.forEach(function (r) {
     html += '<tr><td>' + esc(r.p.numeroQuittance || '—') + '</td><td>' + esc(monthLabel(r.p.periode)) + '</td>' +
       '<td>' + esc(r.cour.nom) + '</td><td>' + esc(r.maison.nom) + '</td><td>' + esc(r.maison.locataireNom || '—') + '</td>' +
       '<td class="num">' + fmtMoney(r.p.montantPaye) + '</td>' +
-      '<td class="row-actions"><button class="btn btn-sm" onclick="openQuittance(\'' + r.maison.id + '\',\'' + r.p.id + '\')">Voir / imprimer</button></td></tr>';
+      '<td class="row-actions"><button class="btn btn-sm" onclick="openQuittance(\'' + r.maison.id + '\',\'' + r.p.id + '\')">Voir / imprimer</button><button class="btn btn-sm btn-ghost" onclick="editPaiement(\'' + r.maison.id + '\',\'' + r.p.id + '\',\'q\')">Modifier</button></td></tr>';
   });
   html += '</table></div>';
   html += renderHistActions(rows.length);
@@ -3410,10 +3653,11 @@ function renderQuittanceModal() {
             '</table>' +
             '<div class="amount-box"><div>Montant reçu</div><div class="big num">' + fmtMoney(p.montantPaye) + '</div>' +
               '<div style="font-size:12.5px;color:#657064;margin-top:4px;">Arrêtée la présente quittance à la somme de : ' + montantMots + '.</div></div>' +
-            '<div class="sigs"><div>Signature du bailleur</div><div>Signature du locataire</div></div>' +
+            receiptDepBlock(m, p) + '<div class="sigs"><div>Signature du bailleur</div><div>Signature du locataire</div></div>' +
           '</div>' +
           '<div class="form-actions no-print"><button class="btn btn-primary" onclick="doPrint()">Imprimer / Enregistrer en PDF</button>' +
           '<button class="btn" onclick="openWa(\'quittance\',\'' + m.id + '\',\'' + p.id + '\')">Envoyer par WhatsApp</button>' +
+          '<button class="btn" onclick="editPaiement(\'' + m.id + '\',\'' + p.id + '\',\'q\')">Modifier</button>' +
           '<button class="btn btn-ghost" onclick="closeQuittance()">Fermer</button></div>' +
         '</div>' +
       '</div>' +
