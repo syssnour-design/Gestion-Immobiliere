@@ -546,6 +546,7 @@ state.cours.forEach(function (c) {
   (c.maisons || []).forEach(function (m) {
     if (!m.locataireId) m.locataireId = uid('locataire');
     if (!m.relances) m.relances = [];
+    if (!m.avisEcheances) m.avisEcheances = [];
     if (!m.depenses) {
       m.depenses = (m.reparations || []).map(function (r) {
         var o = {}; for (var k in r) o[k] = r[k];
@@ -564,7 +565,7 @@ var _now = new Date();
 var ui = { tab: 'dashboard', openCours: {}, openMaisons: {}, addingCour: false,
   addingMaisonTo: null, editingCour: null, editingMaison: null, duplicatePrefill: null,
   addingPaiementTo: null, addingDepenseTo: null, printing: null, savedFlag: '',
-  filterProprietaire: 'all', relanceSel: {}, relancePreview: null, etat: null, addingProprietaire: false, editingProprietaire: null,
+  filterProprietaire: 'all', relanceSel: {}, relancePreview: null, avisSel: {}, avisPreview: null, avisPeriode: null, etat: null, addingProprietaire: false, editingProprietaire: null,
   periodType: 'mois', periodYear: _now.getFullYear(), periodMonth: _now.getMonth() + 1,
   periodQuarter: Math.ceil((_now.getMonth() + 1) / 3), periodSemester: (_now.getMonth() + 1) <= 6 ? 1 : 2 };
 try {
@@ -1986,6 +1987,28 @@ function waMessageRelance(r) {
   lines.push(owner.nom || 'Le bailleur');
   return lines.join('\n');
 }
+function waMessageAvis(a) {
+  var L = buildAvisContent(a), m = a.maison, c = a.cour, owner = a.owner || {};
+  var logement = (m.type ? m.type + ' ' : '') + m.nom + ' - ' + c.nom;
+  var lines = ['Bonjour ' + waNomLocataire(m) + ','];
+  lines.push('');
+  if (a.statut === 'paye') lines.push('Merci pour le règlement du loyer de ' + monthLabel(a.periode) + ' (' + logement + ').');
+  else lines.push('Avis d\'échéance : le loyer de votre logement (' + logement + ') pour *' + monthLabel(a.periode) + '* est de *' + fmtNum(a.reste) + ' FCFA*, payable au plus tard le *' + fmtDateLong(a.echeance) + '*.');
+  if (a.arrieres.length) {
+    lines.push('');
+    lines.push('Rappel : ' + (a.arrieres.length > 1 ? 'des mensualités restent impayées' : 'une mensualité reste impayée') + ' :');
+    if (a.arrieres.length <= 6) a.arrieres.forEach(function (x) { lines.push('• ' + capFirst(monthLabel(x.periode)) + ' : ' + fmtNum(x.reste) + ' FCFA'); });
+    else lines.push('• De ' + capFirst(monthLabel(a.arrieres[0].periode)) + ' à ' + capFirst(monthLabel(a.arrieres[a.arrieres.length - 1].periode)) + ' (' + a.arrieres.length + ' mois) : ' + fmtNum(a.totArr) + ' FCFA');
+  }
+  if (a.total > 0) { lines.push(''); lines.push('*Total à régler : ' + fmtNum(a.total) + ' FCFA*'); }
+  lines.push('');
+  lines.push('Si vous avez déjà payé, merci de ne pas tenir compte de ce message et de nous envoyer votre preuve de paiement.');
+  if (owner.telephone) lines.push('Contact : ' + owner.telephone);
+  lines.push('');
+  lines.push('Cordialement,');
+  lines.push(owner.nom || 'Le bailleur');
+  return lines.join('\n');
+}
 function waMessageQuittance(found, p) {
   var m = found.maison, c = found.cour;
   var owner = findProprietaire(c.proprietaireId) || { nom: '', telephone: '' };
@@ -2067,7 +2090,11 @@ function ensureQuittanceNumber(p) {
 }
 function openWa(kind, maisonId, payId) {
   var text, m;
-  if (kind === 'relance') {
+  if (kind === 'avis') {
+    var av = avisByMaison(maisonId);
+    if (!av) { alert('Aucun avis possible pour cette maison.'); return; }
+    m = av.maison; text = waMessageAvis(av);
+  } else if (kind === 'relance') {
     var r = relanceByMaison(maisonId);
     if (!r) { alert('Aucun loyer en retard pour cette maison.'); return; }
     m = r.maison; text = waMessageRelance(r);
@@ -2079,7 +2106,7 @@ function openWa(kind, maisonId, payId) {
   }
   ui.wa = { kind: kind, maisonId: maisonId, payId: payId || null, text: text };
   ui.waQueue = false;
-  ui.relancePreview = null; ui.printing = null;
+  ui.relancePreview = null; ui.avisPreview = null; ui.printing = null;
   persistUi(); render();
 }
 function closeWa() { ui.wa = null; persistUi(); render(); }
@@ -2090,7 +2117,10 @@ function waSyncTel(m) {
 }
 function waMarkSent(kind, m, payId, fromPdf) {
   var today = todayISO();
-  if (kind === 'relance') {
+  if (kind === 'avis') {
+    var av = avisByMaison(m.id);
+    if (av) logAvis([av], 'whatsapp');
+  } else if (kind === 'relance') {
     var r = relanceByMaison(m.id);
     if (r) logRelances([r], 'whatsapp');
   } else {
@@ -2116,7 +2146,11 @@ async function waPdf() {
   var w = ui.wa; if (!w) return;
   var found = findMaison(w.maisonId); if (!found) return;
   var m = found.maison, doc, name;
-  if (w.kind === 'relance') {
+  if (w.kind === 'avis') {
+    var av = avisByMaison(w.maisonId); if (!av) return;
+    doc = buildAvisPdf([av]);
+    name = 'Avis_echeance_' + slugify(m.locataireNom || m.locataireId) + '_' + av.periode + '.pdf';
+  } else if (w.kind === 'relance') {
     var r = relanceByMaison(w.maisonId); if (!r) return;
     doc = buildRelancesPdf([r]);
     name = 'Relance_' + slugify(m.locataireNom || m.locataireId) + '_' + todayISO() + '.pdf';
@@ -2188,7 +2222,7 @@ function renderWaModal() {
   var w = ui.wa, found = findMaison(w.maisonId);
   if (!found) return '';
   var m = found.maison;
-  var titre = w.kind === 'relance' ? 'Relance par WhatsApp' : 'Quittance par WhatsApp';
+  var titre = w.kind === 'avis' ? 'Avis d\'échéance par WhatsApp' : (w.kind === 'relance' ? 'Relance par WhatsApp' : 'Quittance par WhatsApp');
   var dejaP = w.kind === 'quittance' ? m.paiements.filter(function (x) { return x.id === w.payId; })[0] : null;
   var deja = dejaP && dejaP.envoiWhatsApp ? '<div class="badge badge-amber" style="margin-bottom:10px;">Déjà ouverte dans WhatsApp le ' + esc(fmtDateFR(dejaP.envoiWhatsApp)) + '</div>' : '';
   var lab = waNumberLabel(m.locataireTel);
@@ -3165,6 +3199,300 @@ function waDepLines(m, p) {
   return out;
 }
 
+/* ===================== AVIS D'ÉCHÉANCE DE LOYER ===================== */
+/* Notification adressée au locataire AVANT l'échéance : elle annonce le loyer à payer et la date limite,
+   et peut rappeler les mensualités restées impayées. Elle se distingue de la relance, qui ne vise que
+   les loyers déjà en retard. */
+function addMonthsP(p, n) {
+  var y = +p.slice(0, 4), mo = +p.slice(5, 7) - 1 + n;
+  y += Math.floor(mo / 12); mo = ((mo % 12) + 12) % 12;
+  return y + '-' + pad2(mo + 1);
+}
+function avisPeriodeDefaut() {
+  var t = todayISO(), p = t.slice(0, 7);
+  if (parseInt(t.slice(8, 10), 10) > paramEcheanceJour()) p = addMonthsP(p, 1);
+  return p;
+}
+function avisPeriode() { return ui.avisPeriode || avisPeriodeDefaut(); }
+function avisAvecArrieres() { return !state.parametres || state.parametres.avisArrieres !== false; }
+function sumF(list, f) { return list.reduce(function (s, x) { return s + (Number(f(x)) || 0); }, 0); }
+
+function computeAvis(periode) {
+  var today = todayISO(), out = [], withArr = avisAvecArrieres();
+  scopedCours().forEach(function (c) {
+    var owner = findProprietaire(c.proprietaireId) || { nom: '', telephone: '' };
+    c.maisons.forEach(function (m) {
+      if (!(m.locataireNom && String(m.locataireNom).trim())) return;
+      var loyer = Number(m.loyer) || 0;
+      if (m.dateEntree && periode < m.dateEntree.slice(0, 7)) return;
+      var pays = (m.paiements || []).filter(function (p) { return p.periode === periode; });
+      var du = loyer, paye = 0;
+      if (pays.length) { var sd = sumF(pays, function (p) { return p.montantDu; }); du = sd > 0 ? sd : loyer; paye = sumF(pays, function (p) { return p.montantPaye; }); }
+      if (du <= 0 && !pays.length) return;
+      var reste = Math.max(0, du - paye);
+      var arr = withArr ? computeUnpaidMonths(m, today).filter(function (x) { return x.periode < periode; }) : [];
+      var totArr = sumF(arr, function (x) { return x.reste; });
+      var dern = (m.avisEcheances || []).slice(-1)[0] || null;
+      out.push({ cour: c, maison: m, owner: owner, periode: periode, echeance: dueDateISO(periode), du: du, paye: paye, reste: reste,
+        arrieres: arr, totArr: totArr, total: reste + totArr, statut: reste <= 0 ? 'paye' : (paye > 0 ? 'partiel' : 'avenir'), derniere: dern });
+    });
+  });
+  out.sort(function (a, b) { return (a.cour.nom + a.maison.nom).localeCompare(b.cour.nom + b.maison.nom, 'fr', { numeric: true }); });
+  return out;
+}
+function avisByMaison(id) { return computeAvis(avisPeriode()).find(function (a) { return a.maison.id === id; }); }
+function avisChecked(a) {
+  var v = ui.avisSel && ui.avisSel[a.maison.id];
+  return v === undefined ? a.total > 0 : !!v;
+}
+function avisStatutBadge(a) {
+  if (a.statut === 'paye') return '<span class="badge badge-green">Réglé</span>';
+  if (a.statut === 'partiel') return '<span class="badge badge-amber">Partiel</span>';
+  return '<span class="badge badge-amber">À payer</span>';
+}
+
+/* ----- Contenu de l'avis ----- */
+function buildAvisContent(a, today) {
+  today = today || todayISO();
+  var m = a.maison, c = a.cour, owner = a.owner;
+  var lieu = (state.parametres && state.parametres.lieu) || 'Abidjan';
+  var nomLoc = m.locataireNom || ('Locataire (ID ' + (m.locataireId || '—') + ')');
+  var logement = (m.type ? m.type + ' ' : '') + m.nom + ' - ' + c.nom + (m.adresse ? ', ' + m.adresse : (c.localisation ? ', ' + c.localisation : ''));
+  var mois = capFirst(monthLabel(a.periode)), nA = a.arrieres.length;
+  var limite = a.echeance;
+  var objet = 'Avis d\'échéance - loyer de ' + monthLabel(a.periode) + (nA ? ' et rappel de ' + nA + ' mensualité' + (nA > 1 ? 's' : '') + ' impayée' + (nA > 1 ? 's' : '') : '');
+  var intro = a.statut === 'paye'
+    ? 'Nous vous remercions d\'avoir réglé le loyer de ' + monthLabel(a.periode) + ' du logement que vous occupez.'
+    : 'Nous vous informons que le loyer de ' + monthLabel(a.periode) + ' du logement que vous occupez ' + (limite >= today ? 'sera' : 'est') + ' payable au plus tard le ' + fmtDateLong(limite) + '.';
+  var rappel = nA
+    ? 'Nous constatons par ailleurs que ' + (nA > 1 ? 'les mensualités' : 'la mensualité') + ' ci-dessous ' + (nA > 1 ? 'demeurent impayées' : 'demeure impayée') + ' à ce jour. Nous vous remercions de bien vouloir ' + (a.statut === 'paye' ? 'les' : 'les') + ' régulariser ' + (a.statut === 'paye' ? 'dans les meilleurs délais.' : 'en même temps que cette échéance.')
+    : '';
+  var lignes = a.arrieres.map(function (x) {
+    return { mois: capFirst(monthLabel(x.periode)), echeance: fmtDateFR(x.echeance), du: x.du, paye: x.paye, reste: x.reste, situation: 'Impayé', arriere: true };
+  });
+  lignes.push({ mois: mois, echeance: fmtDateFR(limite), du: a.du, paye: a.paye, reste: a.reste,
+    situation: a.statut === 'paye' ? 'Réglé' : (limite > today ? 'À échoir' : 'Échu'), arriere: false });
+  var pay = a.total > 0
+    ? 'Montant total à régler' + (a.statut === 'paye' ? '' : ' au plus tard le ' + fmtDateLong(limite)) + ' : ' + fmtNum(a.total) + ' FCFA (' + numberToFrenchWords(a.total).toLowerCase() + ' francs CFA).'
+    : 'Aucune somme n\'est due à ce jour.';
+  return {
+    expediteur: owner.nom || '', expTel: owner.telephone || '',
+    lieuDate: lieu + ', le ' + fmtDateLong(today),
+    destinataire: [nomLoc, logement].concat(m.locataireTel ? ['Tél : ' + m.locataireTel] : []),
+    ref: 'AVIS-' + a.periode.replace('-', '') + '-' + m.id,
+    objet: objet, intro: intro, rappel: rappel, lignes: lignes, total: a.total, pay: pay, limite: limite,
+    note: 'Si vous avez déjà effectué ce règlement, nous vous prions de ne pas tenir compte de cet avis et de nous présenter votre quittance afin que nous mettions notre registre à jour.',
+    contact: owner.telephone ? 'Pour toute précision ou pour convenir des modalités de règlement, vous pouvez nous joindre au ' + owner.telephone + '.' : '',
+    formule: 'Veuillez agréer, Madame, Monsieur, l\'expression de nos salutations distinguées.',
+    signataire: owner.nom || ''
+  };
+}
+
+/* ----- PDF ----- */
+function drawAvisLetter(doc, L) {
+  var ML = 20, W = 170, PB = 277, y = 22;
+  doc.setLineHeightFactor(1.4);
+  function ensure(h) { if (y + h > PB) { doc.addPage(); y = 22; } }
+  function para(text, opts) {
+    opts = opts || {};
+    doc.setFont('helvetica', opts.bold ? 'bold' : 'normal'); doc.setFontSize(opts.size || 10.5);
+    var lines = doc.splitTextToSize(pdfSafe(text), opts.w || W);
+    var lh = (opts.size || 10.5) * 0.3528 * 1.4;
+    ensure(lines.length * lh);
+    doc.text(lines, opts.x || ML, y, { baseline: 'top' });
+    y += lines.length * lh + (opts.gap == null ? 3 : opts.gap);
+  }
+  doc.setTextColor(38, 49, 44);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5);
+  doc.text(pdfSafe(L.expediteur || 'Le bailleur'), ML, y, { baseline: 'top' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(101, 112, 100);
+  doc.text('Bailleur' + (L.expTel ? '  -  Tél : ' + pdfSafe(L.expTel) : ''), ML, y + 6, { baseline: 'top' });
+  doc.setTextColor(38, 49, 44); doc.setFontSize(10.5);
+  doc.text(pdfSafe(L.lieuDate), ML + W, y, { align: 'right', baseline: 'top' });
+  y += 15;
+  doc.setDrawColor(140, 106, 34); doc.setLineWidth(0.6); doc.line(ML, y, ML + W, y);
+  y += 8;
+  // Bandeau de titre
+  doc.setFillColor(241, 233, 206); doc.rect(ML, y, W, 10, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(110, 81, 25);
+  doc.text('AVIS D\'ÉCHÉANCE DE LOYER', ML + W / 2, y + 2.6, { align: 'center', baseline: 'top' });
+  doc.setTextColor(38, 49, 44);
+  y += 18;
+  var dy = y;
+  L.destinataire.forEach(function (ln, i) {
+    doc.setFont('helvetica', i === 0 ? 'bold' : 'normal'); doc.setFontSize(10.5);
+    var parts = doc.splitTextToSize(pdfSafe(ln), 78);
+    doc.text(parts, 112, dy, { baseline: 'top' });
+    dy += parts.length * 5.2;
+  });
+  y = Math.max(y + 4, dy) + 8;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(101, 112, 100);
+  doc.text('Réf. : ' + pdfSafe(L.ref), ML, y, { baseline: 'top' });
+  y += 8;
+  doc.setTextColor(38, 49, 44);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5);
+  var oLines = doc.splitTextToSize('Objet : ' + pdfSafe(L.objet), W);
+  doc.text(oLines, ML, y, { baseline: 'top' });
+  y += oLines.length * 5.2 + 7;
+  para('Madame, Monsieur,', { gap: 4 });
+  para(L.intro, { gap: 4 });
+  if (L.rappel) para(L.rappel, { gap: 5 });
+  var cols = [['Mois', 34, 'left'], ['Échéance', 25, 'left'], ['Loyer', 26, 'right'], ['Déjà payé', 26, 'right'], ['Reste à payer', 31, 'right'], ['Situation', 28, 'left']];
+  function colX(i) { var x = ML; for (var k = 0; k < i; k++) x += cols[k][1]; return x; }
+  function tx(i) { return cols[i][2] === 'right' ? colX(i) + cols[i][1] - 2 : colX(i) + 3; }
+  function tableHeader() {
+    ensure(16);
+    doc.setFillColor(241, 233, 206); doc.rect(ML, y, W, 7.5, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+    cols.forEach(function (c, i) { doc.text(pdfSafe(c[0]), tx(i), y + 2, { align: c[2], baseline: 'top' }); });
+    y += 7.5;
+  }
+  doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(101, 112, 100);
+  ensure(24);
+  doc.text('Montants en FCFA', ML + W, y, { align: 'right', baseline: 'top' });
+  y += 5; doc.setTextColor(38, 49, 44);
+  tableHeader();
+  L.lignes.forEach(function (ln) {
+    if (y + 7 > PB) { doc.addPage(); y = 22; tableHeader(); }
+    doc.setFont('helvetica', ln.arriere ? 'normal' : 'bold'); doc.setFontSize(9.5);
+    var vals = [ln.mois, ln.echeance, fmtNum(ln.du), fmtNum(ln.paye), fmtNum(ln.reste), ln.situation];
+    cols.forEach(function (c, i) { doc.text(pdfSafe(vals[i]), tx(i), y + 1.8, { align: c[2], baseline: 'top' }); });
+    y += 7;
+    doc.setDrawColor(215, 207, 174); doc.setLineWidth(0.2); doc.line(ML, y, ML + W, y);
+  });
+  ensure(10);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+  doc.setDrawColor(140, 106, 34); doc.setLineWidth(0.5); doc.line(ML, y, ML + W, y);
+  doc.text('TOTAL À RÉGLER', colX(0) + 3, y + 2.2, { baseline: 'top' });
+  doc.text(fmtNum(L.total) + ' FCFA', ML + W - 2, y + 2.2, { align: 'right', baseline: 'top' });
+  y += 12;
+  para(L.pay, { bold: true, gap: 4 });
+  para(L.note, { gap: 4 });
+  if (L.contact) para(L.contact, { gap: 4 });
+  ensure(34);
+  para(L.formule, { gap: 6 });
+  para('Le bailleur,', { gap: 10 });
+  para(L.signataire, { bold: true });
+}
+function buildAvisPdf(list) {
+  if (!window.jspdf || !window.jspdf.jsPDF) return null;
+  var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  list.forEach(function (a, i) {
+    if (i > 0) doc.addPage();
+    drawAvisLetter(doc, buildAvisContent(a));
+  });
+  return doc;
+}
+function logAvis(list, canal) {
+  canal = canal || '';
+  var today = todayISO();
+  list.forEach(function (a) {
+    var m = a.maison;
+    if (!m.avisEcheances) m.avisEcheances = [];
+    var l = m.avisEcheances[m.avisEcheances.length - 1];
+    if (l && l.date === today && l.periode === a.periode && l.total === a.total && (l.canal || '') === canal) return;
+    var ent = { date: today, periode: a.periode, total: a.total };
+    if (canal) ent.canal = canal;
+    m.avisEcheances.push(ent);
+  });
+  save();
+}
+async function emitAvis(list, filename) {
+  if (!list.length) { alert('Aucun avis à générer.'); return; }
+  var doc = buildAvisPdf(list);
+  if (!doc) { alert('Le générateur PDF n\'a pas pu se charger. Vérifiez la connexion internet puis réessayez.'); return; }
+  var ok = await saveBlob(filename, doc.output('blob'));
+  if (ok) logAvis(list);
+}
+function downloadAvis(maisonId) {
+  var a = avisByMaison(maisonId);
+  if (!a) { alert('Aucun avis possible pour cette maison.'); return; }
+  emitAvis([a], 'Avis_echeance_' + slugify(a.maison.locataireNom || a.maison.locataireId) + '_' + a.periode + '.pdf');
+}
+function downloadAvisSelection() {
+  var per = avisPeriode();
+  var list = computeAvis(per).filter(avisChecked);
+  emitAvis(list, 'Avis_echeance_' + per + '.pdf');
+}
+
+/* ----- Actions UI ----- */
+function setAvisPeriode(v) { ui.avisPeriode = v; ui.avisSel = {}; persistUi(); render(); }
+function toggleAvisSel(id, checked) { ui.avisSel[id] = !!checked; persistUi(); render(); }
+function setAvisAll(flag) { computeAvis(avisPeriode()).forEach(function (a) { ui.avisSel[a.maison.id] = !!flag; }); persistUi(); render(); }
+function openAvisPreview(id) { ui.avisPreview = id; persistUi(); render(); }
+function closeAvisPreview() { ui.avisPreview = null; persistUi(); render(); }
+
+/* ----- Rendu ----- */
+function renderAvis() {
+  var per = avisPeriode(), list = computeAvis(per);
+  var p = state.parametres || {}, jour = paramEcheanceJour();
+  var cur = todayISO().slice(0, 7), perOpts = '';
+  for (var i = -1; i <= 3; i++) {
+    var v = addMonthsP(cur, i);
+    perOpts += '<option value="' + v + '"' + (v === per ? ' selected' : '') + '>' + esc(capFirst(monthLabel(v))) + '</option>';
+  }
+  var jours = '';
+  for (var d = 1; d <= 28; d++) jours += '<option value="' + d + '"' + (d === jour ? ' selected' : '') + '>le ' + d + '</option>';
+  var html = '<div class="section-head"><h2>Avis d\'échéance de loyer</h2></div>';
+  html += '<p style="color:var(--ink-soft);font-size:13px;margin:0 0 12px;">L\'avis prévient le locataire de la date limite de paiement de son prochain loyer. Il peut aussi rappeler les mensualités restées impayées. À la différence de la relance, il est envoyé avant l\'échéance et n\'est pas une mise en demeure.</p>';
+  html += '<div class="form-box" style="margin-top:0;"><div class="grid3">' +
+    '<div class="field"><label>Mois de l\'échéance</label><select onchange="setAvisPeriode(this.value)">' + perOpts + '</select></div>' +
+    '<div class="field"><label>Loyer payable au plus tard</label><select onchange="setParam(\'jourEcheance\',this.value)">' + jours + '</select></div>' +
+    '<div class="field"><label>Lieu de rédaction</label><input type="text" value="' + esc(p.lieu || 'Abidjan') + '" onchange="setParam(\'lieu\',this.value.trim()||\'Abidjan\')"></div></div>' +
+    '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13px;color:var(--ink-soft);"><input type="checkbox" style="margin-top:3px;"' + (avisAvecArrieres() ? ' checked' : '') + ' onchange="setParamBool(\'avisArrieres\',this.checked)">' +
+    '<span>Rappeler dans l\'avis les mensualités impayées des mois précédents.</span></label></div>';
+  var sel = list.filter(avisChecked);
+  html += '<div class="kpis" style="margin-top:16px;">' +
+    kpi(list.length, 'Locataire' + (list.length > 1 ? 's' : '') + ' concerné' + (list.length > 1 ? 's' : '')) +
+    kpi(fmtMoney(sumF(list, function (a) { return a.reste; })), 'Loyers de ' + esc(monthLabel(per)) + ' restant à payer') +
+    kpi(fmtMoney(sumF(list, function (a) { return a.totArr; })), 'Mensualités impayées rappelées', sumF(list, function (a) { return a.totArr; }) > 0) + '</div>';
+  if (!list.length) return html + '<div class="empty-hint">Aucune maison occupée avec un loyer pour ce mois.</div>';
+  html += '<div class="section-head" style="margin-top:20px;"><h3>Avis pour ' + esc(monthLabel(per)) + '</h3><div class="cour-actions">' +
+    '<button class="btn btn-sm btn-ghost" onclick="setAvisAll(true)">Tout cocher</button>' +
+    '<button class="btn btn-sm btn-ghost" onclick="setAvisAll(false)">Tout décocher</button>' +
+    '<button class="btn btn-sm btn-primary"' + (sel.length ? '' : ' disabled') + ' onclick="downloadAvisSelection()">PDF des ' + sel.length + ' avis coché' + (sel.length > 1 ? 's' : '') + '</button></div></div>';
+  html += '<div class="table-wrap"><table><tr><th></th><th>Locataire</th><th>Cour / maison</th><th class="num">Loyer</th><th>Statut</th><th>Impayés à rappeler</th><th class="num">Total à régler</th><th>Dernier avis</th><th></th></tr>';
+  list.forEach(function (a) {
+    var m = a.maison;
+    html += '<tr><td><input type="checkbox"' + (avisChecked(a) ? ' checked' : '') + ' onchange="toggleAvisSel(\'' + m.id + '\',this.checked)"></td>' +
+      '<td>' + esc(m.locataireNom) + (m.locataireTel ? '<div class="maison-sub">' + esc(m.locataireTel) + '</div>' : '') + '</td>' +
+      '<td>' + esc(a.cour.nom) + ' &middot; ' + esc(m.nom) + '</td>' +
+      '<td class="num">' + fmtMoney(a.du) + '</td><td>' + avisStatutBadge(a) + '</td>' +
+      '<td>' + (a.arrieres.length ? '<span style="color:var(--red);font-weight:600;">' + a.arrieres.length + ' mois : ' + fmtMoney(a.totArr) + '</span><div class="maison-sub">' + moisSummary(a.arrieres) + '</div>' : '<span style="color:var(--ink-faint);">aucun</span>') + '</td>' +
+      '<td class="num"><strong>' + fmtMoney(a.total) + '</strong></td>' +
+      '<td>' + (a.derniere ? esc(fmtDateFR(a.derniere.date)) + '<div class="maison-sub">pour ' + esc(monthLabel(a.derniere.periode)) + (a.derniere.canal === 'whatsapp' ? ' (WhatsApp)' : '') + '</div>' : '<span style="color:var(--ink-faint);">jamais</span>') + '</td>' +
+      '<td class="row-actions"><button class="btn btn-sm btn-ghost" onclick="openAvisPreview(\'' + m.id + '\')">Aperçu</button>' +
+      '<button class="btn btn-sm" onclick="openWa(\'avis\',\'' + m.id + '\')">WhatsApp</button>' +
+      '<button class="btn btn-sm" onclick="downloadAvis(\'' + m.id + '\')">PDF</button></td></tr>';
+  });
+  html += '</table></div><p style="color:var(--ink-faint);font-size:12px;margin-top:12px;">Chaque avis est un PDF d\'une page (le fichier groupé en contient une par locataire coché). L\'envoi reste manuel : remettez l\'avis en main propre ou transmettez-le par WhatsApp ou e-mail.</p>';
+  return html;
+}
+function renderAvisModal() {
+  if (!ui.avisPreview) return '';
+  var a = avisByMaison(ui.avisPreview);
+  if (!a) return '';
+  var L = buildAvisContent(a);
+  var rows = L.lignes.map(function (x) {
+    return '<tr><td>' + (x.arriere ? '' : '<strong>') + esc(x.mois) + (x.arriere ? '' : '</strong>') + '</td><td>' + esc(x.echeance) + '</td><td class="num">' + fmtNum(x.du) + '</td><td class="num">' + fmtNum(x.paye) + '</td><td class="num">' + fmtNum(x.reste) + '</td><td>' + esc(x.situation) + '</td></tr>';
+  }).join('');
+  return '<div class="overlay" onclick="if(event.target===this)closeAvisPreview()"><div class="modal" style="max-width:720px;">' +
+    '<div class="modal-head"><strong>Aperçu de l\'avis d\'échéance</strong><button class="btn btn-sm btn-ghost" onclick="closeAvisPreview()">Fermer &times;</button></div>' +
+    '<div class="modal-body"><div class="letter">' +
+    '<div class="l-top"><div><strong>' + esc(L.expediteur) + '</strong><div class="l-muted">Bailleur' + (L.expTel ? ' &middot; Tél : ' + esc(L.expTel) : '') + '</div></div><div>' + esc(L.lieuDate) + '</div></div>' +
+    '<div style="background:#F1E9CE;text-align:center;font-weight:700;color:#6E5119;padding:8px;margin-bottom:14px;letter-spacing:.3px;">AVIS D\'ÉCHÉANCE DE LOYER</div>' +
+    '<div class="l-dest">' + L.destinataire.map(function (x, i) { return i === 0 ? '<strong>' + esc(x) + '</strong>' : '<div>' + esc(x) + '</div>'; }).join('') + '</div>' +
+    '<div class="l-muted">Réf. : ' + esc(L.ref) + '</div>' +
+    '<p><strong>Objet : ' + esc(L.objet) + '</strong></p><p>Madame, Monsieur,</p><p>' + esc(L.intro) + '</p>' + (L.rappel ? '<p>' + esc(L.rappel) + '</p>' : '') +
+    '<table><tr><th>Mois</th><th>Échéance</th><th class="num">Loyer</th><th class="num">Déjà payé</th><th class="num">Reste à payer</th><th>Situation</th></tr>' + rows +
+    '<tr><td colspan="4"><strong>TOTAL À RÉGLER (FCFA)</strong></td><td class="num" colspan="2"><strong>' + fmtNum(L.total) + '</strong></td></tr></table>' +
+    '<p><strong>' + esc(L.pay) + '</strong></p><p>' + esc(L.note) + '</p>' + (L.contact ? '<p>' + esc(L.contact) + '</p>' : '') +
+    '<p>' + esc(L.formule) + '</p><p>Le bailleur,<br><br><strong>' + esc(L.signataire) + '</strong></p></div>' +
+    '<div class="form-actions"><button class="btn btn-primary" onclick="downloadAvis(\'' + a.maison.id + '\')">Télécharger en PDF</button>' +
+    '<button class="btn" onclick="openWa(\'avis\',\'' + a.maison.id + '\')">Envoyer par WhatsApp</button>' +
+    '<button class="btn btn-ghost" onclick="closeAvisPreview()">Fermer</button></div></div></div></div>';
+}
+
 /* ===================== RENDU : TOPBAR ===================== */
 function renderTopbar() {
   var ownerOptions = '<option value="all"' + (ui.filterProprietaire === 'all' ? ' selected' : '') + '>Tous les propriétaires</option>' +
@@ -3186,6 +3514,7 @@ function renderTopbar() {
         tabBtn('registre', 'Cours &amp; maisons') +
         tabBtn('quittances', 'Quittances') +
         tabBtn('relances', 'Relances' + relanceBadge()) +
+        tabBtn('echeances', 'Échéances') +
         tabBtn('etats', 'États') +
         tabBtn('sauvegarde', 'Sauvegarde') +
         tabBtn('acces', 'Accès') +
@@ -3695,6 +4024,7 @@ function render() {
   else if (ui.tab === 'proprietaires') content = renderProprietaires();
   else if (ui.tab === 'registre') content = renderRegistre();
   else if (ui.tab === 'relances') content = renderRelances();
+  else if (ui.tab === 'echeances') content = renderAvis();
   else if (ui.tab === 'etats') content = renderEtats();
   else if (ui.tab === 'sauvegarde') content = renderSauvegarde();
   else if (ui.tab === 'acces') content = renderAcces();
@@ -3706,6 +4036,7 @@ function render() {
     (IN_CLAUDE ? 'données propres à cet artefact' : 'données enregistrées localement dans ce navigateur') + '</footer>';
   html += renderQuittanceModal();
   html += renderRelanceModal();
+  html += renderAvisModal();
   html += renderWaModal();
 
   document.getElementById('app').innerHTML = html;
